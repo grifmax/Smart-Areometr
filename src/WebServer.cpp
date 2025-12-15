@@ -172,11 +172,80 @@ void WebServerManager::setupRoutes() {
     });
 
     // API: Получить данные калибровки
-    server->on("/api/calibration", HTTP_GET, [](AsyncWebServerRequest *request) {
-        if (LittleFS.exists("/calibration.json")) {
-            request->send(LittleFS, "/calibration.json", "application/json");
+    server->on("/api/calibration", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getCalibrationDataCallback) {
+            String data = getCalibrationDataCallback();
+            request->send(200, "application/json", data);
         } else {
-            request->send(404, "application/json", "{\"error\":\"not_calibrated\"}");
+            request->send(404, "application/json", "{\"error\":\"not_calibrated\",\"points\":[]}");
+        }
+    });
+
+    // API: Добавить калибровочную точку
+    server->on("/api/calibration/point", HTTP_POST,
+        [](AsyncWebServerRequest *request) {},
+        nullptr,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            // Парсим JSON из тела запроса
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, (const char*)data, len);
+
+            if (error) {
+                request->send(400, "application/json", "{\"error\":\"invalid_json\"}");
+                return;
+            }
+
+            float alcoholPercent = doc["alcohol_percent"] | 0.0f;
+            float temperature = doc["temperature"] | 20.0f;
+
+            if (addCalibrationPointCallback) {
+                bool success = addCalibrationPointCallback(alcoholPercent, temperature);
+                if (success) {
+                    // Получаем текущее сырое значение для ответа
+                    uint16_t rawValue = rawValueCallback ? rawValueCallback() : 0;
+                    String response = "{\"status\":\"success\",\"alcohol_percent\":" + String(alcoholPercent) +
+                                     ",\"raw_value\":" + String(rawValue) + "}";
+                    request->send(200, "application/json", response);
+                } else {
+                    request->send(500, "application/json", "{\"error\":\"failed_to_add_point\",\"message\":\"Maximum points reached or sensor error\"}");
+                }
+            } else {
+                request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+            }
+        }
+    );
+
+    // API: Удалить калибровочную точку
+    server->on("/api/calibration/point/*", HTTP_DELETE, [this](AsyncWebServerRequest *request) {
+        // Извлекаем индекс из URL
+        String url = request->url();
+        int lastSlash = url.lastIndexOf('/');
+        if (lastSlash == -1) {
+            request->send(400, "application/json", "{\"error\":\"invalid_url\"}");
+            return;
+        }
+
+        uint8_t index = url.substring(lastSlash + 1).toInt();
+
+        if (deleteCalibrationPointCallback) {
+            bool success = deleteCalibrationPointCallback(index);
+            if (success) {
+                request->send(200, "application/json", "{\"status\":\"success\"}");
+            } else {
+                request->send(400, "application/json", "{\"error\":\"invalid_index\"}");
+            }
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+        }
+    });
+
+    // API: Очистить все точки калибровки
+    server->on("/api/calibration", HTTP_DELETE, [this](AsyncWebServerRequest *request) {
+        if (clearCalibrationCallback) {
+            clearCalibrationCallback();
+            request->send(200, "application/json", "{\"status\":\"success\"}");
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
         }
     });
 
@@ -226,6 +295,8 @@ String WebServerManager::generateMeasurementJSON() {
     doc["alcohol"] = alcoholCallback ? alcoholCallback() : 0.0f;
     doc["temperature"] = temperatureCallback ? temperatureCallback() : 0.0f;
     doc["calibrated"] = calibratedCallback ? calibratedCallback() : false;
+    doc["raw_value"] = rawValueCallback ? rawValueCallback() : 0;
+    doc["stability"] = stabilityCallback ? stabilityCallback() : 0;
     doc["timestamp"] = millis();
 
     String response;
@@ -259,6 +330,30 @@ void WebServerManager::setTemperatureCallback(std::function<float()> callback) {
 
 void WebServerManager::setCalibratedCallback(std::function<bool()> callback) {
     calibratedCallback = callback;
+}
+
+void WebServerManager::setRawValueCallback(std::function<uint16_t()> callback) {
+    rawValueCallback = callback;
+}
+
+void WebServerManager::setStabilityCallback(std::function<uint8_t()> callback) {
+    stabilityCallback = callback;
+}
+
+void WebServerManager::setAddCalibrationPointCallback(std::function<bool(float, float)> callback) {
+    addCalibrationPointCallback = callback;
+}
+
+void WebServerManager::setDeleteCalibrationPointCallback(std::function<bool(uint8_t)> callback) {
+    deleteCalibrationPointCallback = callback;
+}
+
+void WebServerManager::setClearCalibrationCallback(std::function<void()> callback) {
+    clearCalibrationCallback = callback;
+}
+
+void WebServerManager::setGetCalibrationDataCallback(std::function<String()> callback) {
+    getCalibrationDataCallback = callback;
 }
 
 void WebServerManager::handleOTA() {

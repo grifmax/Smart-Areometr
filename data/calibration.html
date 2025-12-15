@@ -40,150 +40,162 @@
                             <p id="calibrationStatusDesc">Загрузка данных калибровки</p>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- Мастер калибровки -->
-            <div class="card">
-                <div class="card-header">
-                    <h2>Процесс калибровки</h2>
-                </div>
-                <div class="card-body">
-                    <!-- Шаги калибровки -->
-                    <div class="calibration-steps">
-                        <div class="step" id="step1">
-                            <div class="step-number">1</div>
-                            <div class="step-content">
-                                <h3>Калибровка на воде (0% алкоголя)</h3>
-                                <p>Погрузите датчик в чистую дистиллированную воду</p>
-                                <div class="step-instructions">
-                                    <ul>
-                                        <li>Используйте дистиллированную или кипяченую воду</li>
-                                        <li>Температура воды: 15-25°C</li>
-                                        <li>Датчик должен быть полностью погружен</li>
-                                        <li>Подождите 10-15 секунд для стабилизации</li>
-                                    </ul>
-                                </div>
-                                <div class="step-display">
-                                    <div class="raw-value">
-                                        <span class="label">Текущее значение:</span>
-                                        <span class="value" id="waterRawValue">--</span>
-                                    </div>
-                                </div>
-                                <button class="btn btn-primary btn-large" id="calibrateWaterBtn" onclick="calibrateWater()">
-                                    Калибровать на воде
-                                </button>
+                    <div class="calibration-info" id="calibrationInfo" style="display: none;">
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Точек:</span>
+                                <span class="info-value" id="pointCount">-</span>
                             </div>
-                        </div>
-
-                        <div class="step-separator">→</div>
-
-                        <div class="step" id="step2">
-                            <div class="step-number">2</div>
-                            <div class="step-content">
-                                <h3>Калибровка на спирте (100% алкоголя)</h3>
-                                <p>Погрузите датчик в чистый спирт (96-99%)</p>
-                                <div class="step-instructions">
-                                    <ul>
-                                        <li>Используйте медицинский спирт 96%</li>
-                                        <li>Тщательно промойте датчик после воды</li>
-                                        <li>Датчик должен быть полностью погружен</li>
-                                        <li>Подождите 10-15 секунд для стабилизации</li>
-                                    </ul>
-                                </div>
-                                <div class="step-display">
-                                    <div class="raw-value">
-                                        <span class="label">Текущее значение:</span>
-                                        <span class="value" id="alcoholRawValue">--</span>
-                                    </div>
-                                </div>
-                                <button class="btn btn-primary btn-large" id="calibrateAlcoholBtn" onclick="calibrateAlcohol()" disabled>
-                                    Калибровать на спирте
-                                </button>
+                            <div class="info-item">
+                                <span class="info-label">Диапазон:</span>
+                                <span class="info-value" id="alcoholRange">-</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Raw диапазон:</span>
+                                <span class="info-value" id="rawRange">-</span>
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    <!-- Прогресс калибровки -->
-                    <div class="calibration-progress" id="calibrationProgress" style="display: none;">
-                        <div class="progress-bar">
-                            <div class="progress-fill" id="progressFill"></div>
+            <!-- Текущее измерение -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Текущие показания датчика</h2>
+                </div>
+                <div class="card-body">
+                    <div class="sensor-readings">
+                        <div class="reading-box">
+                            <div class="reading-label">Сырое значение</div>
+                            <div class="reading-value" id="currentRawValue">--</div>
                         </div>
-                        <p class="progress-text" id="progressText">Калибровка...</p>
+                        <div class="reading-box">
+                            <div class="reading-label">Температура</div>
+                            <div class="reading-value" id="currentTemp">--°C</div>
+                        </div>
+                        <div class="reading-box">
+                            <div class="reading-label">Стабильность</div>
+                            <div class="reading-value" id="stability">--%</div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Расширенные настройки -->
+            <!-- Добавление калибровочной точки -->
             <div class="card">
                 <div class="card-header">
-                    <h2>Расширенные настройки</h2>
+                    <h2>Добавить калибровочную точку</h2>
                 </div>
                 <div class="card-body">
-                    <div class="advanced-settings">
-                        <div class="setting-group">
-                            <label for="waterValue">Значение для воды:</label>
-                            <input type="number" id="waterValue" step="0.1" readonly>
+                    <div class="add-point-form">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="knownAlcohol">Известная крепость (%):</label>
+                                <input type="number" id="knownAlcohol" min="0" max="100" step="0.1" value="0">
+                                <small>Фактическая крепость раствора</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="temperature">Температура (°C):</label>
+                                <input type="number" id="temperature" min="0" max="40" step="0.1" value="20">
+                                <small>Температура раствора при калибровке</small>
+                            </div>
                         </div>
-                        <div class="setting-group">
-                            <label for="alcoholValue">Значение для спирта:</label>
-                            <input type="number" id="alcoholValue" step="0.1" readonly>
+
+                        <!-- Быстрый выбор -->
+                        <div class="quick-select">
+                            <p><strong>Быстрый выбор:</strong></p>
+                            <div class="quick-buttons">
+                                <button class="btn btn-small" onclick="setQuickPoint(0, 'Вода')">Вода (0%)</button>
+                                <button class="btn btn-small" onclick="setQuickPoint(40, 'Водка')">Водка (40%)</button>
+                                <button class="btn btn-small" onclick="setQuickPoint(70, 'Спирт 70%')">Спирт (70%)</button>
+                                <button class="btn btn-small" onclick="setQuickPoint(96, 'Спирт 96%')">Спирт (96%)</button>
+                            </div>
                         </div>
-                        <div class="setting-group">
-                            <label for="tempRef">Эталонная температура (°C):</label>
-                            <input type="number" id="tempRef" value="20.0" step="0.1">
+
+                        <div class="form-actions">
+                            <button class="btn btn-primary btn-large" onclick="addCalibrationPoint()">
+                                <span id="addPointBtnText">📍 Добавить точку</span>
+                            </button>
                         </div>
-                        <div class="setting-group">
-                            <label for="tempCoeff">Температурный коэффициент (%/°C):</label>
-                            <input type="number" id="tempCoeff" value="0.4" step="0.01">
+
+                        <div class="calibration-hint">
+                            <strong>💡 Совет:</strong> Погрузите датчик в раствор известной крепости,
+                            дождитесь стабилизации показаний (стабильность >70%), затем добавьте точку.
                         </div>
-                        <button class="btn btn-secondary" onclick="saveAdvancedSettings()">
-                            Сохранить настройки
-                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Инструкции -->
+            <!-- Калибровочные точки -->
             <div class="card">
                 <div class="card-header">
-                    <h2>📖 Инструкции по калибровке</h2>
+                    <h2>Калибровочные точки</h2>
+                    <button class="btn btn-danger btn-small" onclick="clearAllPoints()" id="clearAllBtn">
+                        Очистить все
+                    </button>
                 </div>
                 <div class="card-body">
-                    <div class="instructions">
-                        <h3>Подготовка:</h3>
-                        <ol>
-                            <li>Убедитесь, что датчики чистые и сухие</li>
-                            <li>Подготовьте два стакана: один с водой, другой со спиртом</li>
-                            <li>Убедитесь, что растворы имеют комнатную температуру (18-22°C)</li>
-                        </ol>
+                    <div id="pointsList" class="points-list">
+                        <div class="empty-state">
+                            <p>Калибровочные точки отсутствуют</p>
+                            <small>Добавьте минимум 2 точки для калибровки</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                        <h3>Процесс калибровки:</h3>
-                        <ol>
-                            <li>Погрузите датчик в дистиллированную воду</li>
-                            <li>Дождитесь стабилизации показаний (15-30 секунд)</li>
-                            <li>Нажмите "Калибровать на воде"</li>
-                            <li>Выньте датчик, промойте водой и протрите</li>
-                            <li>Погрузите датчик в чистый спирт (96%)</li>
-                            <li>Дождитесь стабилизации показаний</li>
-                            <li>Нажмите "Калибровать на спирте"</li>
-                        </ol>
+            <!-- Рекомендации по калибровке -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>📖 Рекомендации по калибровке</h2>
+                </div>
+                <div class="card-body">
+                    <div class="recommendations">
+                        <h3>Конфигурации калибровки:</h3>
 
-                        <h3>После калибровки:</h3>
+                        <div class="config-box">
+                            <h4>✅ Базовая (2 точки) - точность ±3-5%</h4>
+                            <ul>
+                                <li>0% - дистиллированная вода</li>
+                                <li>96% - медицинский спирт</li>
+                            </ul>
+                            <small>Подходит для начальной настройки</small>
+                        </div>
+
+                        <div class="config-box">
+                            <h4>⭐ Рекомендуемая (4 точки) - точность ±1-2%</h4>
+                            <ul>
+                                <li>0% - дистиллированная вода</li>
+                                <li>40% - магазинная водка</li>
+                                <li>70% - разбавленный спирт (70мл спирта + 30мл воды)</li>
+                                <li>96% - медицинский спирт</li>
+                            </ul>
+                            <small>Оптимальный баланс точности и простоты</small>
+                        </div>
+
+                        <div class="config-box">
+                            <h4>🎯 Профессиональная (7 точек) - точность ±0.5-1%</h4>
+                            <ul>
+                                <li>0%, 20%, 40%, 50%, 60%, 80%, 96%</li>
+                            </ul>
+                            <small>Максимальная точность по всему диапазону</small>
+                        </div>
+
+                        <h3>Важные советы:</h3>
                         <ul>
-                            <li>Промойте датчик водой</li>
-                            <li>Проверьте точность на известных растворах (40%, 70%)</li>
-                            <li>При необходимости повторите калибровку</li>
+                            <li>Перед добавлением каждой точки тщательно промывайте датчик</li>
+                            <li>Ждите стабилизации показаний (15-30 секунд)</li>
+                            <li>Стабильность должна быть >70% перед добавлением точки</li>
+                            <li>Все растворы должны иметь одинаковую температуру (±2°C)</li>
+                            <li>Используйте точные спиртометры для проверки крепости</li>
                         </ul>
 
-                        <div class="warning-box">
-                            <strong>⚠️ Важно:</strong>
-                            <ul>
-                                <li>Используйте только чистую дистиллированную воду</li>
-                                <li>Спирт должен быть максимально чистым (96-99%)</li>
-                                <li>Не калибруйте при экстремальных температурах</li>
-                                <li>Храните калибровочные растворы в закрытых емкостях</li>
-                            </ul>
+                        <h3>Формулы для приготовления растворов:</h3>
+                        <div class="formula-box">
+                            <p><strong>V<sub>спирта</sub> = (C<sub>нужная</sub> × V<sub>общий</sub>) / C<sub>спирта</sub></strong></p>
+                            <p><strong>V<sub>воды</sub> = V<sub>общий</sub> - V<sub>спирта</sub></strong></p>
+                            <small>Например, для 100мл раствора 40% из спирта 96%: V<sub>спирта</sub> = (40×100)/96 = 41.7мл</small>
                         </div>
                     </div>
                 </div>

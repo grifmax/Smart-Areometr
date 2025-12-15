@@ -26,6 +26,14 @@ private:
     std::function<float()> alcoholCallback;
     std::function<float()> temperatureCallback;
     std::function<bool()> calibratedCallback;
+    std::function<uint16_t()> rawValueCallback;
+    std::function<uint8_t()> stabilityCallback;
+
+    // Callback функции для управления калибровкой
+    std::function<bool(float, float)> addCalibrationPointCallback;  // (alcoholPercent, temperature) -> success
+    std::function<bool(uint8_t)> deleteCalibrationPointCallback;    // (index) -> success
+    std::function<void()> clearCalibrationCallback;
+    std::function<String()> getCalibrationDataCallback;            // -> JSON с точками
 
     /**
      * @brief Настроить маршруты веб-сервера
@@ -109,6 +117,36 @@ public:
      * @brief Установить callback для проверки калибровки
      */
     void setCalibratedCallback(std::function<bool()> callback);
+
+    /**
+     * @brief Установить callback для получения сырого значения
+     */
+    void setRawValueCallback(std::function<uint16_t()> callback);
+
+    /**
+     * @brief Установить callback для получения стабильности
+     */
+    void setStabilityCallback(std::function<uint8_t()> callback);
+
+    /**
+     * @brief Установить callback для добавления калибровочной точки
+     */
+    void setAddCalibrationPointCallback(std::function<bool(float, float)> callback);
+
+    /**
+     * @brief Установить callback для удаления калибровочной точки
+     */
+    void setDeleteCalibrationPointCallback(std::function<bool(uint8_t)> callback);
+
+    /**
+     * @brief Установить callback для очистки калибровки
+     */
+    void setClearCalibrationCallback(std::function<void()> callback);
+
+    /**
+     * @brief Установить callback для получения данных калибровки
+     */
+    void setGetCalibrationDataCallback(std::function<String()> callback);
 
     /**
      * @brief Обработка OTA (вызывать в loop)
