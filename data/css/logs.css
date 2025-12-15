@@ -1,0 +1,200 @@
+/* === Стили для страницы логов === */
+
+.filters {
+    display: flex;
+    gap: var(--spacing);
+    margin-bottom: var(--spacing);
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 200px;
+}
+
+.filter-group label {
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.filter-group select {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.3s;
+}
+
+.filter-group select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing);
+}
+
+.stat-item {
+    text-align: center;
+    padding: var(--spacing);
+    background: var(--bg-color);
+    border-radius: var(--radius);
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.logs-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.logs-table thead {
+    background: var(--bg-color);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.logs-table th {
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+.logs-table tbody tr {
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.2s;
+}
+
+.logs-table tbody tr:hover {
+    background: var(--bg-color);
+}
+
+.logs-table td {
+    padding: 12px;
+    color: var(--text-primary);
+}
+
+.logs-table td.value-cell {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.logs-table td.center {
+    text-align: center;
+}
+
+.no-data {
+    text-align: center;
+    padding: calc(var(--spacing) * 3);
+}
+
+.no-data p {
+    font-size: 1.125rem;
+    margin-bottom: 8px;
+}
+
+.no-data .text-secondary {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.error-message {
+    color: var(--danger-color);
+    padding: calc(var(--spacing) * 2);
+    font-weight: 500;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .filters {
+        flex-direction: column;
+    }
+
+    .filter-group {
+        width: 100%;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .logs-table {
+        font-size: 0.75rem;
+    }
+
+    .logs-table th,
+    .logs-table td {
+        padding: 8px 4px;
+    }
+
+    .header-actions {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .logs-table thead {
+        display: none;
+    }
+
+    .logs-table tbody tr {
+        display: block;
+        margin-bottom: var(--spacing);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        padding: var(--spacing);
+    }
+
+    .logs-table td {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .logs-table td:last-child {
+        border-bottom: none;
+    }
+
+    .logs-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+}

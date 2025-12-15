@@ -1,5 +1,6 @@
 #include "WebServer.h"
 #include "config.h"
+#include <LittleFS.h>
 
 WebServerManager::WebServerManager(uint16_t port)
     : apMode(false), deviceIP("") {
@@ -70,9 +71,57 @@ bool WebServerManager::beginAP(const String &s, const String &p) {
 }
 
 void WebServerManager::setupRoutes() {
+    // Статические файлы из LittleFS
     // Главная страница
-    server->on("/", HTTP_GET, [this](AsyncWebServerRequest *request) {
-        request->send(200, "text/html", generateHomePage());
+    server->on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (LittleFS.exists("/index.html")) {
+            request->send(LittleFS, "/index.html", "text/html");
+        } else {
+            request->send(404, "text/plain", "index.html not found");
+        }
+    });
+
+    // HTML страницы
+    server->on("/calibration.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(LittleFS, "/calibration.html", "text/html");
+    });
+
+    server->on("/settings.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(LittleFS, "/settings.html", "text/html");
+    });
+
+    server->on("/logs.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(LittleFS, "/logs.html", "text/html");
+    });
+
+    // CSS файлы
+    server->on("/css/style.css", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(LittleFS, "/css/style.css", "text/css");
+    });
+
+    server->on("/css/calibration.css", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(LittleFS, "/css/calibration.css", "text/css");
+    });
+
+    server->on("/css/logs.css", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(LittleFS, "/css/logs.css", "text/css");
+    });
+
+    // JavaScript файлы
+    server->on("/js/app.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(LittleFS, "/js/app.js", "application/javascript");
+    });
+
+    server->on("/js/calibration.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(LittleFS, "/js/calibration.js", "application/javascript");
+    });
+
+    server->on("/js/settings.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(LittleFS, "/js/settings.js", "application/javascript");
+    });
+
+    server->on("/js/logs.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(LittleFS, "/js/logs.js", "application/javascript");
     });
 
     // API: Получить данные измерений
@@ -94,6 +143,23 @@ void WebServerManager::setupRoutes() {
         request->send(200, "application/json", response);
     });
 
+    // API: Получить логи
+    server->on("/api/logs", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (LittleFS.exists(LOG_FILE)) {
+            request->send(LittleFS, LOG_FILE, "application/json");
+        } else {
+            request->send(200, "application/json", "{\"measurements\":[]}");
+        }
+    });
+
+    // API: Очистить логи
+    server->on("/api/logs", HTTP_DELETE, [](AsyncWebServerRequest *request) {
+        if (LittleFS.exists(LOG_FILE)) {
+            LittleFS.remove(LOG_FILE);
+        }
+        request->send(200, "application/json", "{\"status\":\"success\"}");
+    });
+
     // API: Калибровка воды
     server->on("/api/calibrate/water", HTTP_POST, [](AsyncWebServerRequest *request) {
         // Этот эндпоинт будет вызывать калибровку через callback
@@ -103,6 +169,15 @@ void WebServerManager::setupRoutes() {
     // API: Калибровка спирта
     server->on("/api/calibrate/alcohol", HTTP_POST, [](AsyncWebServerRequest *request) {
         request->send(200, "application/json", "{\"status\":\"calibration_started\",\"step\":\"alcohol\"}");
+    });
+
+    // API: Получить данные калибровки
+    server->on("/api/calibration", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (LittleFS.exists("/calibration.json")) {
+            request->send(LittleFS, "/calibration.json", "application/json");
+        } else {
+            request->send(404, "application/json", "{\"error\":\"not_calibrated\"}");
+        }
     });
 
     // 404
@@ -143,101 +218,7 @@ void WebServerManager::setupOTA() {
     Serial.println("OTA configured");
 }
 
-String WebServerManager::generateHomePage() {
-    String html = R"rawliteral(
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Areometr</title>
-    <style>
-        body { font-family: Arial; margin: 20px; background: #f0f0f0; }
-        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { color: #333; text-align: center; }
-        .measurement { background: #e3f2fd; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; }
-        .value { font-size: 48px; font-weight: bold; color: #1976d2; }
-        .label { font-size: 18px; color: #666; margin-top: 10px; }
-        .info { display: flex; justify-content: space-around; margin: 20px 0; }
-        .info-item { text-align: center; }
-        .info-value { font-size: 24px; font-weight: bold; color: #555; }
-        .info-label { font-size: 14px; color: #888; }
-        button { background: #1976d2; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px; }
-        button:hover { background: #1565c0; }
-        .status { padding: 10px; background: #c8e6c9; border-radius: 5px; margin: 10px 0; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🍺 Smart Areometr</h1>
-
-        <div class="measurement">
-            <div class="value" id="alcohol">--</div>
-            <div class="label">Alcohol %</div>
-        </div>
-
-        <div class="info">
-            <div class="info-item">
-                <div class="info-value" id="temperature">--</div>
-                <div class="info-label">Temperature °C</div>
-            </div>
-            <div class="info-item">
-                <div class="info-value" id="status">--</div>
-                <div class="info-label">Status</div>
-            </div>
-        </div>
-
-        <div style="text-align: center;">
-            <button onclick="calibrateWater()">Calibrate Water</button>
-            <button onclick="calibrateAlcohol()">Calibrate Alcohol</button>
-            <button onclick="refresh()">Refresh</button>
-        </div>
-
-        <div class="status" id="statusMsg">Ready</div>
-    </div>
-
-    <script>
-        function updateData() {
-            fetch('/api/measurement')
-                .then(r => r.json())
-                .then(data => {
-                    document.getElementById('alcohol').textContent = data.alcohol.toFixed(1);
-                    document.getElementById('temperature').textContent = data.temperature.toFixed(1);
-                    document.getElementById('status').textContent = data.calibrated ? 'OK' : 'Not Cal';
-                })
-                .catch(e => console.error('Error:', e));
-        }
-
-        function calibrateWater() {
-            fetch('/api/calibrate/water', {method: 'POST'})
-                .then(r => r.json())
-                .then(data => {
-                    document.getElementById('statusMsg').textContent = 'Water calibration started';
-                });
-        }
-
-        function calibrateAlcohol() {
-            fetch('/api/calibrate/alcohol', {method: 'POST'})
-                .then(r => r.json())
-                .then(data => {
-                    document.getElementById('statusMsg').textContent = 'Alcohol calibration started';
-                });
-        }
-
-        function refresh() {
-            updateData();
-            document.getElementById('statusMsg').textContent = 'Data refreshed';
-        }
-
-        // Auto-update every 2 seconds
-        setInterval(updateData, 2000);
-        updateData();
-    </script>
-</body>
-</html>
-)rawliteral";
-    return html;
-}
+// Функция generateHomePage() удалена - теперь используются статические файлы из LittleFS
 
 String WebServerManager::generateMeasurementJSON() {
     JsonDocument doc;

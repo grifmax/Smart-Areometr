@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Areometr</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Навигация -->
+        <nav class="navbar">
+            <div class="nav-brand">
+                <span class="icon">🍺</span>
+                <span class="brand-text">Smart Areometr</span>
+            </div>
+            <div class="nav-menu">
+                <a href="/" class="nav-link active">Главная</a>
+                <a href="/calibration.html" class="nav-link">Калибровка</a>
+                <a href="/settings.html" class="nav-link">Настройки</a>
+                <a href="/logs.html" class="nav-link">Логи</a>
+            </div>
+        </nav>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <!-- Карточка текущего измерения -->
+            <div class="card measurement-card">
+                <div class="card-header">
+                    <h2>Текущее измерение</h2>
+                    <span class="status-badge" id="statusBadge">
+                        <span class="status-dot"></span>
+                        <span id="connectionStatus">Подключение...</span>
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="measurement-display">
+                        <div class="primary-value">
+                            <div class="value-label">Крепость</div>
+                            <div class="value-number" id="alcoholValue">--</div>
+                            <div class="value-unit">%</div>
+                        </div>
+                        <div class="secondary-values">
+                            <div class="value-item">
+                                <div class="value-icon">🌡️</div>
+                                <div class="value-content">
+                                    <div class="value-small-label">Температура</div>
+                                    <div class="value-small-number" id="temperatureValue">--</div>
+                                    <span class="value-small-unit">°C</span>
+                                </div>
+                            </div>
+                            <div class="value-item">
+                                <div class="value-icon">✓</div>
+                                <div class="value-content">
+                                    <div class="value-small-label">Калибровка</div>
+                                    <div class="value-small-number" id="calibrationStatus">--</div>
+                                </div>
+                            </div>
+                            <div class="value-item">
+                                <div class="value-icon">⏱</div>
+                                <div class="value-content">
+                                    <div class="value-small-label">Обновлено</div>
+                                    <div class="value-small-number" id="lastUpdate">--</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Графики -->
+            <div class="charts-grid">
+                <div class="card chart-card">
+                    <div class="card-header">
+                        <h3>График крепости</h3>
+                        <div class="chart-controls">
+                            <button class="btn-small" onclick="clearChartData('alcohol')">Очистить</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="alcoholChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card chart-card">
+                    <div class="card-header">
+                        <h3>График температуры</h3>
+                        <div class="chart-controls">
+                            <button class="btn-small" onclick="clearChartData('temperature')">Очистить</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="temperatureChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Быстрые действия -->
+            <div class="card actions-card">
+                <div class="card-header">
+                    <h3>Действия</h3>
+                </div>
+                <div class="card-body">
+                    <div class="actions-grid">
+                        <button class="action-btn" onclick="measureNow()">
+                            <span class="action-icon">📊</span>
+                            <span class="action-text">Измерить</span>
+                        </button>
+                        <button class="action-btn" onclick="window.location='/calibration.html'">
+                            <span class="action-icon">⚙️</span>
+                            <span class="action-text">Калибровка</span>
+                        </button>
+                        <button class="action-btn" onclick="exportData()">
+                            <span class="action-icon">💾</span>
+                            <span class="action-text">Экспорт</span>
+                        </button>
+                        <button class="action-btn" onclick="window.location='/logs.html'">
+                            <span class="action-icon">📋</span>
+                            <span class="action-text">История</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Системная информация -->
+            <div class="card info-card">
+                <div class="card-header">
+                    <h3>Информация о системе</h3>
+                </div>
+                <div class="card-body">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Версия:</span>
+                            <span class="info-value" id="firmwareVersion">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Wi-Fi:</span>
+                            <span class="info-value" id="wifiMode">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">SSID:</span>
+                            <span class="info-value" id="ssid">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">IP:</span>
+                            <span class="info-value" id="ipAddress">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Футер -->
+        <footer class="footer">
+            <p>&copy; 2025 Smart Areometr. MIT License</p>
+        </footer>
+    </div>
+
+    <!-- Подключение скриптов -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>

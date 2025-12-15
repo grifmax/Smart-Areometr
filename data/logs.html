@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Логи - Smart Areometr</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/logs.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Навигация -->
+        <nav class="navbar">
+            <div class="nav-brand">
+                <span class="icon">🍺</span>
+                <span class="brand-text">Smart Areometr</span>
+            </div>
+            <div class="nav-menu">
+                <a href="/" class="nav-link">Главная</a>
+                <a href="/calibration.html" class="nav-link">Калибровка</a>
+                <a href="/settings.html" class="nav-link">Настройки</a>
+                <a href="/logs.html" class="nav-link active">Логи</a>
+            </div>
+        </nav>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <!-- Фильтры и управление -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>История измерений</h2>
+                    <div class="header-actions">
+                        <button class="btn-small" onclick="refreshLogs()">Обновить</button>
+                        <button class="btn-small" onclick="exportLogsCSV()">Экспорт CSV</button>
+                        <button class="btn-small" onclick="exportLogsJSON()">Экспорт JSON</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label for="filterLimit">Показать записей:</label>
+                            <select id="filterLimit" onchange="refreshLogs()">
+                                <option value="10">10</option>
+                                <option value="25" selected>25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="0">Все</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="filterSort">Сортировка:</label>
+                            <select id="filterSort" onchange="refreshLogs()">
+                                <option value="desc">Сначала новые</option>
+                                <option value="asc">Сначала старые</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Статистика -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Статистика</h3>
+                </div>
+                <div class="card-body">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">Всего записей</div>
+                            <div class="stat-value" id="totalRecords">--</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Средняя крепость</div>
+                            <div class="stat-value" id="avgAlcohol">--%</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Мин. / Макс.</div>
+                            <div class="stat-value" id="minMaxAlcohol">-- / --%</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Средняя температура</div>
+                            <div class="stat-value" id="avgTemp">--°C</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Таблица логов -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Записи</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-container">
+                        <table class="logs-table" id="logsTable">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Дата и время</th>
+                                    <th>Крепость (%)</th>
+                                    <th>Температура (°C)</th>
+                                    <th>Компенсация</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logsTableBody">
+                                <tr>
+                                    <td colspan="5" class="text-center">Загрузка данных...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="noDataMessage" class="no-data" style="display: none;">
+                        <p>📊 Нет данных для отображения</p>
+                        <p class="text-secondary">Измерения будут автоматически сохраняться в лог</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Футер -->
+        <footer class="footer">
+            <p>&copy; 2025 Smart Areometr. MIT License</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="/js/logs.js"></script>
+</body>
+</html>

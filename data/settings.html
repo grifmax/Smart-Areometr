@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Настройки - Smart Areometr</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Навигация -->
+        <nav class="navbar">
+            <div class="nav-brand">
+                <span class="icon">🍺</span>
+                <span class="brand-text">Smart Areometr</span>
+            </div>
+            <div class="nav-menu">
+                <a href="/" class="nav-link">Главная</a>
+                <a href="/calibration.html" class="nav-link">Калибровка</a>
+                <a href="/settings.html" class="nav-link active">Настройки</a>
+                <a href="/logs.html" class="nav-link">Логи</a>
+            </div>
+        </nav>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <!-- Wi-Fi настройки -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Wi-Fi подключение</h2>
+                </div>
+                <div class="card-body">
+                    <form id="wifiForm" onsubmit="saveWifiSettings(event)">
+                        <div class="form-group">
+                            <label for="ssid">SSID сети:</label>
+                            <input type="text" id="ssid" name="ssid" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Пароль:</label>
+                            <input type="password" id="password" name="password">
+                            <small>Оставьте пустым для открытой сети</small>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Сохранить и перезагрузить</button>
+                        </div>
+                    </form>
+                    <div class="current-wifi">
+                        <h3>Текущее подключение:</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">SSID:</span>
+                                <span class="info-value" id="currentSSID">--</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">IP адрес:</span>
+                                <span class="info-value" id="currentIP">--</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Режим:</span>
+                                <span class="info-value" id="wifiMode">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Параметры измерения -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Параметры измерения</h2>
+                </div>
+                <div class="card-body">
+                    <form id="measurementForm" onsubmit="saveMeasurementSettings(event)">
+                        <div class="form-group">
+                            <label for="samples">Количество выборок:</label>
+                            <input type="number" id="samples" name="samples" value="100" min="10" max="500">
+                            <small>Больше выборок = выше точность, но медленнее измерение</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="delay">Задержка между выборками (мс):</label>
+                            <input type="number" id="delay" name="delay" value="10" min="1" max="100">
+                        </div>
+                        <div class="form-group">
+                            <label for="interval">Интервал автоматических измерений (сек):</label>
+                            <input type="number" id="interval" name="interval" value="5" min="1" max="60">
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Сохранить</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Температурная компенсация -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Температурная компенсация</h2>
+                </div>
+                <div class="card-body">
+                    <form id="tempForm" onsubmit="saveTempSettings(event)">
+                        <div class="form-group">
+                            <label for="tempReference">Эталонная температура (°C):</label>
+                            <input type="number" id="tempReference" name="tempReference" value="20.0" step="0.1">
+                            <small>Температура, при которой проводилась калибровка</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="tempCoefficient">Температурный коэффициент (%/°C):</label>
+                            <input type="number" id="tempCoefficient" name="tempCoefficient" value="0.4" step="0.01">
+                            <small>Изменение показаний на 1°C отклонения температуры</small>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Сохранить</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- OTA обновления -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Обновление прошивки (OTA)</h2>
+                </div>
+                <div class="card-body">
+                    <p>Hostname: <strong>areometr</strong></p>
+                    <p>Для обновления прошивки используйте PlatformIO или Arduino IDE с функцией OTA.</p>
+                    <div class="warning-box">
+                        <strong>⚠️ Важно:</strong>
+                        <ul>
+                            <li>Убедитесь, что устройство подключено к сети</li>
+                            <li>Не отключайте питание во время обновления</li>
+                            <li>Процесс обновления занимает 1-2 минуты</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Системная информация -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Системная информация</h2>
+                </div>
+                <div class="card-body">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Версия прошивки:</span>
+                            <span class="info-value" id="firmwareVersion">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Свободная память:</span>
+                            <span class="info-value" id="freeHeap">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Uptime:</span>
+                            <span class="info-value" id="uptime">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Файловая система:</span>
+                            <span class="info-value" id="fsInfo">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Действия -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Действия</h2>
+                </div>
+                <div class="card-body">
+                    <div class="actions-grid">
+                        <button class="action-btn" onclick="rebootDevice()">
+                            <span class="action-icon">🔄</span>
+                            <span class="action-text">Перезагрузка</span>
+                        </button>
+                        <button class="action-btn" onclick="resetSettings()">
+                            <span class="action-icon">⚙️</span>
+                            <span class="action-text">Сброс настроек</span>
+                        </button>
+                        <button class="action-btn" onclick="clearLogs()">
+                            <span class="action-icon">🗑️</span>
+                            <span class="action-text">Очистить логи</span>
+                        </button>
+                        <button class="action-btn" onclick="exportSettings()">
+                            <span class="action-icon">💾</span>
+                            <span class="action-text">Экспорт настроек</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Футер -->
+        <footer class="footer">
+            <p>&copy; 2025 Smart Areometr. MIT License</p>
+        </footer>
+    </div>
+
+    <script src="/js/settings.js"></script>
+</body>
+</html>

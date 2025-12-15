@@ -1,0 +1,273 @@
+/* === Стили для страницы калибровки === */
+
+.calibration-status {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--spacing) * 2);
+    padding: calc(var(--spacing) * 2);
+    background: var(--bg-color);
+    border-radius: var(--radius);
+}
+
+.status-icon {
+    font-size: 4rem;
+    animation: pulse 2s infinite;
+}
+
+.status-icon.success {
+    animation: none;
+}
+
+.status-text h3 {
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.status-text p {
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.calibration-steps {
+    display: flex;
+    align-items: flex-start;
+    gap: calc(var(--spacing) * 2);
+    margin: calc(var(--spacing) * 2) 0;
+}
+
+.step {
+    flex: 1;
+    padding: calc(var(--spacing) * 1.5);
+    background: var(--bg-color);
+    border-radius: var(--radius);
+    border: 2px solid var(--border-color);
+    transition: all 0.3s;
+}
+
+.step.active {
+    border-color: var(--primary-color);
+    background: var(--primary-light);
+}
+
+.step.completed {
+    border-color: var(--success-color);
+    background: #E8F5E9;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: var(--spacing);
+}
+
+.step.completed .step-number {
+    background: var(--success-color);
+}
+
+.step-content h3 {
+    margin-bottom: 8px;
+    font-size: 1.125rem;
+}
+
+.step-content p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing);
+}
+
+.step-instructions {
+    margin: var(--spacing) 0;
+    padding: var(--spacing);
+    background: white;
+    border-radius: var(--radius);
+}
+
+.step-instructions ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.step-instructions li {
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.step-display {
+    margin: var(--spacing) 0;
+    padding: var(--spacing);
+    background: white;
+    border-radius: var(--radius);
+    text-align: center;
+}
+
+.raw-value {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.raw-value .label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.raw-value .value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.step-separator {
+    font-size: 2rem;
+    color: var(--text-secondary);
+    align-self: center;
+}
+
+.btn-large {
+    width: 100%;
+    padding: 16px 24px;
+    font-size: 1rem;
+    margin-top: var(--spacing);
+}
+
+.calibration-progress {
+    margin-top: calc(var(--spacing) * 2);
+    padding: calc(var(--spacing) * 2);
+    background: var(--primary-light);
+    border-radius: var(--radius);
+}
+
+.progress-bar {
+    width: 100%;
+    height: 12px;
+    background: white;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: var(--spacing);
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-dark));
+    transition: width 0.3s;
+    width: 0%;
+}
+
+.progress-text {
+    text-align: center;
+    color: var(--text-primary);
+    font-weight: 500;
+    margin: 0;
+}
+
+/* Расширенные настройки */
+.advanced-settings {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing);
+}
+
+.setting-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.setting-group label {
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.setting-group input {
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+.setting-group input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.setting-group input:read-only {
+    background: var(--bg-color);
+    cursor: not-allowed;
+}
+
+/* Инструкции */
+.instructions {
+    line-height: 1.8;
+}
+
+.instructions h3 {
+    margin-top: calc(var(--spacing) * 1.5);
+    margin-bottom: var(--spacing);
+    color: var(--primary-color);
+}
+
+.instructions ol, .instructions ul {
+    margin-left: 20px;
+    margin-bottom: var(--spacing);
+}
+
+.instructions li {
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.warning-box {
+    margin-top: calc(var(--spacing) * 2);
+    padding: var(--spacing);
+    background: #FFF3E0;
+    border-left: 4px solid var(--warning-color);
+    border-radius: var(--radius);
+}
+
+.warning-box strong {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--warning-color);
+}
+
+.warning-box ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.warning-box li {
+    color: #E65100;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .calibration-steps {
+        flex-direction: column;
+    }
+
+    .step-separator {
+        transform: rotate(90deg);
+        align-self: center;
+    }
+
+    .calibration-status {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .advanced-settings {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калибровка - Smart Areometr</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/calibration.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Навигация -->
+        <nav class="navbar">
+            <div class="nav-brand">
+                <span class="icon">🍺</span>
+                <span class="brand-text">Smart Areometr</span>
+            </div>
+            <div class="nav-menu">
+                <a href="/" class="nav-link">Главная</a>
+                <a href="/calibration.html" class="nav-link active">Калибровка</a>
+                <a href="/settings.html" class="nav-link">Настройки</a>
+                <a href="/logs.html" class="nav-link">Логи</a>
+            </div>
+        </nav>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <!-- Текущий статус калибровки -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Статус калибровки</h2>
+                </div>
+                <div class="card-body">
+                    <div class="calibration-status">
+                        <div class="status-icon" id="calibrationIcon">
+                            <span id="statusEmoji">⚠️</span>
+                        </div>
+                        <div class="status-text">
+                            <h3 id="calibrationStatusText">Проверка...</h3>
+                            <p id="calibrationStatusDesc">Загрузка данных калибровки</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Мастер калибровки -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Процесс калибровки</h2>
+                </div>
+                <div class="card-body">
+                    <!-- Шаги калибровки -->
+                    <div class="calibration-steps">
+                        <div class="step" id="step1">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h3>Калибровка на воде (0% алкоголя)</h3>
+                                <p>Погрузите датчик в чистую дистиллированную воду</p>
+                                <div class="step-instructions">
+                                    <ul>
+                                        <li>Используйте дистиллированную или кипяченую воду</li>
+                                        <li>Температура воды: 15-25°C</li>
+                                        <li>Датчик должен быть полностью погружен</li>
+                                        <li>Подождите 10-15 секунд для стабилизации</li>
+                                    </ul>
+                                </div>
+                                <div class="step-display">
+                                    <div class="raw-value">
+                                        <span class="label">Текущее значение:</span>
+                                        <span class="value" id="waterRawValue">--</span>
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary btn-large" id="calibrateWaterBtn" onclick="calibrateWater()">
+                                    Калибровать на воде
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="step-separator">→</div>
+
+                        <div class="step" id="step2">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h3>Калибровка на спирте (100% алкоголя)</h3>
+                                <p>Погрузите датчик в чистый спирт (96-99%)</p>
+                                <div class="step-instructions">
+                                    <ul>
+                                        <li>Используйте медицинский спирт 96%</li>
+                                        <li>Тщательно промойте датчик после воды</li>
+                                        <li>Датчик должен быть полностью погружен</li>
+                                        <li>Подождите 10-15 секунд для стабилизации</li>
+                                    </ul>
+                                </div>
+                                <div class="step-display">
+                                    <div class="raw-value">
+                                        <span class="label">Текущее значение:</span>
+                                        <span class="value" id="alcoholRawValue">--</span>
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary btn-large" id="calibrateAlcoholBtn" onclick="calibrateAlcohol()" disabled>
+                                    Калибровать на спирте
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Прогресс калибровки -->
+                    <div class="calibration-progress" id="calibrationProgress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <p class="progress-text" id="progressText">Калибровка...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Расширенные настройки -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Расширенные настройки</h2>
+                </div>
+                <div class="card-body">
+                    <div class="advanced-settings">
+                        <div class="setting-group">
+                            <label for="waterValue">Значение для воды:</label>
+                            <input type="number" id="waterValue" step="0.1" readonly>
+                        </div>
+                        <div class="setting-group">
+                            <label for="alcoholValue">Значение для спирта:</label>
+                            <input type="number" id="alcoholValue" step="0.1" readonly>
+                        </div>
+                        <div class="setting-group">
+                            <label for="tempRef">Эталонная температура (°C):</label>
+                            <input type="number" id="tempRef" value="20.0" step="0.1">
+                        </div>
+                        <div class="setting-group">
+                            <label for="tempCoeff">Температурный коэффициент (%/°C):</label>
+                            <input type="number" id="tempCoeff" value="0.4" step="0.01">
+                        </div>
+                        <button class="btn btn-secondary" onclick="saveAdvancedSettings()">
+                            Сохранить настройки
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Инструкции -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>📖 Инструкции по калибровке</h2>
+                </div>
+                <div class="card-body">
+                    <div class="instructions">
+                        <h3>Подготовка:</h3>
+                        <ol>
+                            <li>Убедитесь, что датчики чистые и сухие</li>
+                            <li>Подготовьте два стакана: один с водой, другой со спиртом</li>
+                            <li>Убедитесь, что растворы имеют комнатную температуру (18-22°C)</li>
+                        </ol>
+
+                        <h3>Процесс калибровки:</h3>
+                        <ol>
+                            <li>Погрузите датчик в дистиллированную воду</li>
+                            <li>Дождитесь стабилизации показаний (15-30 секунд)</li>
+                            <li>Нажмите "Калибровать на воде"</li>
+                            <li>Выньте датчик, промойте водой и протрите</li>
+                            <li>Погрузите датчик в чистый спирт (96%)</li>
+                            <li>Дождитесь стабилизации показаний</li>
+                            <li>Нажмите "Калибровать на спирте"</li>
+                        </ol>
+
+                        <h3>После калибровки:</h3>
+                        <ul>
+                            <li>Промойте датчик водой</li>
+                            <li>Проверьте точность на известных растворах (40%, 70%)</li>
+                            <li>При необходимости повторите калибровку</li>
+                        </ul>
+
+                        <div class="warning-box">
+                            <strong>⚠️ Важно:</strong>
+                            <ul>
+                                <li>Используйте только чистую дистиллированную воду</li>
+                                <li>Спирт должен быть максимально чистым (96-99%)</li>
+                                <li>Не калибруйте при экстремальных температурах</li>
+                                <li>Храните калибровочные растворы в закрытых емкостях</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Футер -->
+        <footer class="footer">
+            <p>&copy; 2025 Smart Areometr. MIT License</p>
+        </footer>
+    </div>
+
+    <script src="/js/calibration.js"></script>
+</body>
+</html>
