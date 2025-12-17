@@ -10,11 +10,16 @@
 // Для ESP32-C3 с USB CDC (ARDUINO_USB_CDC_ON_BOOT=1) Serial определен ядром как USBCDC
 // Для обычного ESP32 Serial определен как HardwareSerial
 #if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32C6)
-    // ESP32-C3 с USB CDC - включаем USB.h для доступа к Serial (USBCDC)
-    // Serial должен быть определен автоматически ядром через ARDUINO_USB_CDC_ON_BOOT=1
+    // ESP32-C3 с USB CDC - нужно явно объявить Serial
     #include <USB.h>
-    // Не объявляем Serial здесь - он уже определен ядром как USBCDC
-    // Это предотвращает конфликт типов с ядром ESP32
+    #include <HWCDC.h>
+    // Явная декларация Serial для ESP32-C3
+    #if ARDUINO_USB_CDC_ON_BOOT
+        extern HWCDC Serial;
+    #else
+        #include <HardwareSerial.h>
+        extern HardwareSerial Serial;
+    #endif
 #elif defined(ARDUINO_ARCH_ESP32)
     // Для обычного ESP32 Serial определен как HardwareSerial
     #include <HardwareSerial.h>
