@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "DisplayManager.h"
 #include "config.h"
 

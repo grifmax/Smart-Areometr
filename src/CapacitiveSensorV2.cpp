@@ -1,7 +1,7 @@
-#include "CapacitiveSensorV2.h"
-#include "config.h"
 #include <Arduino.h>
 #include <math.h>
+#include "CapacitiveSensorV2.h"
+#include "config.h"
 
 CapacitiveSensorV2::CapacitiveSensorV2(uint8_t sensorPin, uint16_t numSamples, uint16_t sampleDelay)
     : pin(sensorPin), samples(numSamples), delayMs(sampleDelay) {

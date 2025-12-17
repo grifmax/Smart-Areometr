@@ -1,6 +1,6 @@
+#include <Arduino.h>
 #include "CapacitiveSensor.h"
 #include "config.h"
-#include <Arduino.h>
 
 CapacitiveSensor::CapacitiveSensor(uint8_t sensorPin, uint16_t numSamples, uint16_t sampleDelay)
     : pin(sensorPin), samples(numSamples), delayMs(sampleDelay) {

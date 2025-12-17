@@ -1,5 +1,5 @@
-#include "MQTTBridge.h"
 #include <Arduino.h>
+#include "MQTTBridge.h"
 
 // Статическая ссылка на текущий экземпляр для callback
 static MQTTBridge* mqttBridgeInstance = nullptr;

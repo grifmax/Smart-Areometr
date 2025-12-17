@@ -1,7 +1,7 @@
-#include "CalibrationTables.h"
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <algorithm>
+#include "CalibrationTables.h"
 
 // ============================================================================
 // Таблица температурной коррекции (ГОСТ 3639-79)

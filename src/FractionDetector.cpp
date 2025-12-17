@@ -1,5 +1,5 @@
-#include "FractionDetector.h"
 #include <Arduino.h>
+#include "FractionDetector.h"
 
 FractionDetector::FractionDetector()
     : currentFraction(Fraction::UNKNOWN), previousFraction(Fraction::UNKNOWN),
