@@ -2,6 +2,7 @@
 
 FractionDetector::FractionDetector()
     : currentFraction(Fraction::UNKNOWN), previousFraction(Fraction::UNKNOWN),
+      mode(DetectionMode::MASH_MODE),  // По умолчанию - режим из браги
       historyIndex(0), historyCount(0), currentStatsIndex(0),
       totalVolume(0), lastVolumeUpdate(0), flowRateMLPerSec(0) {
 
@@ -62,7 +63,12 @@ Fraction FractionDetector::update(float alcohol, float temperature) {
     }
     lastVolumeUpdate = now;
 
-    // Определяем фракцию
+    // В режиме мониторинга - не детектируем автоматически, только собираем данные
+    if (mode == DetectionMode::MONITORING_MODE) {
+        return currentFraction;
+    }
+
+    // Определяем фракцию (только в режиме MASH_MODE)
     Fraction newFraction = currentFraction;
 
     // Этап 1: Первач (foreshots) - по объему
@@ -245,6 +251,14 @@ bool FractionDetector::loadSettings(const String &json) {
     thresholds.tailsThreshold = doc["tails_threshold"] | 78.0f;
     thresholds.rateThreshold = doc["rate_threshold"] | 0.5f;
 
+    // Загружаем режим
+    String modeStr = doc["mode"] | "mash";
+    if (modeStr == "monitoring") {
+        mode = DetectionMode::MONITORING_MODE;
+    } else {
+        mode = DetectionMode::MASH_MODE;
+    }
+
     Serial.println("FractionDetector: Settings loaded");
     return true;
 }
@@ -258,10 +272,28 @@ String FractionDetector::saveSettings() const {
     doc["body_max"] = thresholds.bodyMaxThreshold;
     doc["tails_threshold"] = thresholds.tailsThreshold;
     doc["rate_threshold"] = thresholds.rateThreshold;
+    doc["mode"] = getModeName(mode);
 
     String json;
     serializeJson(doc, json);
     return json;
+}
+
+void FractionDetector::setMode(DetectionMode m) {
+    mode = m;
+    Serial.printf("FractionDetector: Mode set to %s\n", getModeName(m).c_str());
+}
+
+DetectionMode FractionDetector::getMode() const {
+    return mode;
+}
+
+String FractionDetector::getModeName(DetectionMode m) {
+    switch (m) {
+        case DetectionMode::MASH_MODE: return "mash";
+        case DetectionMode::MONITORING_MODE: return "monitoring";
+        default: return "unknown";
+    }
 }
 
 // === Private методы ===

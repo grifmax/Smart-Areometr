@@ -94,6 +94,14 @@ void WebServerManager::setupRoutes() {
         request->send(LittleFS, "/logs.html", "text/html");
     });
 
+    server->on("/fractions.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(LittleFS, "/fractions.html", "text/html");
+    });
+
+    server->on("/mqtt.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(LittleFS, "/mqtt.html", "text/html");
+    });
+
     // CSS файлы
     server->on("/css/style.css", HTTP_GET, [](AsyncWebServerRequest *request) {
         request->send(LittleFS, "/css/style.css", "text/css");
@@ -122,6 +130,14 @@ void WebServerManager::setupRoutes() {
 
     server->on("/js/logs.js", HTTP_GET, [](AsyncWebServerRequest *request) {
         request->send(LittleFS, "/js/logs.js", "application/javascript");
+    });
+
+    server->on("/js/fractions.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(LittleFS, "/js/fractions.js", "application/javascript");
+    });
+
+    server->on("/js/mqtt.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(LittleFS, "/js/mqtt.js", "application/javascript");
     });
 
     // API: Получить данные измерений
@@ -249,6 +265,100 @@ void WebServerManager::setupRoutes() {
         }
     });
 
+    // === Fraction Detector API ===
+
+    // API: Получить статус фракций
+    server->on("/api/fractions/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getFractionStatusCallback) {
+            String json = getFractionStatusCallback();
+            request->send(200, "application/json", json);
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+        }
+    });
+
+    // API: Получить статистику фракций
+    server->on("/api/fractions/stats", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getFractionStatsCallback) {
+            String json = getFractionStatsCallback();
+            request->send(200, "application/json", json);
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+        }
+    });
+
+    // API: Получить пороги фракций
+    server->on("/api/fractions/thresholds", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getFractionThresholdsCallback) {
+            String json = getFractionThresholdsCallback();
+            request->send(200, "application/json", json);
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+        }
+    });
+
+    // API: Установить пороги фракций
+    server->on("/api/fractions/thresholds", HTTP_POST,
+        [](AsyncWebServerRequest *request) {
+            // Заглушка для обработки без тела
+        },
+        nullptr,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (setFractionThresholdsCallback) {
+                String body = String((char*)data).substring(0, len);
+                bool success = setFractionThresholdsCallback(body);
+                if (success) {
+                    request->send(200, "application/json", "{\"status\":\"success\"}");
+                } else {
+                    request->send(400, "application/json", "{\"error\":\"invalid_data\"}");
+                }
+            } else {
+                request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+            }
+        }
+    );
+
+    // API: Сбросить сессию фракций
+    server->on("/api/fractions/reset", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (resetFractionSessionCallback) {
+            resetFractionSessionCallback();
+            request->send(200, "application/json", "{\"status\":\"success\"}");
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+        }
+    });
+
+    // API: Получить режим работы
+    server->on("/api/fractions/mode", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getFractionModeCallback) {
+            String json = getFractionModeCallback();
+            request->send(200, "application/json", json);
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+        }
+    });
+
+    // API: Установить режим работы
+    server->on("/api/fractions/mode", HTTP_POST,
+        [](AsyncWebServerRequest *request) {
+            // Заглушка для обработки без тела
+        },
+        nullptr,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (setFractionModeCallback) {
+                String body = String((char*)data).substring(0, len);
+                bool success = setFractionModeCallback(body);
+                if (success) {
+                    request->send(200, "application/json", "{\"status\":\"success\"}");
+                } else {
+                    request->send(400, "application/json", "{\"error\":\"invalid_data\"}");
+                }
+            } else {
+                request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+            }
+        }
+    );
+
     // 404
     server->onNotFound([](AsyncWebServerRequest *request) {
         request->send(404, "text/plain", "Not Found");
@@ -354,6 +464,34 @@ void WebServerManager::setClearCalibrationCallback(std::function<void()> callbac
 
 void WebServerManager::setGetCalibrationDataCallback(std::function<String()> callback) {
     getCalibrationDataCallback = callback;
+}
+
+void WebServerManager::setGetFractionStatusCallback(std::function<String()> callback) {
+    getFractionStatusCallback = callback;
+}
+
+void WebServerManager::setGetFractionStatsCallback(std::function<String()> callback) {
+    getFractionStatsCallback = callback;
+}
+
+void WebServerManager::setGetFractionThresholdsCallback(std::function<String()> callback) {
+    getFractionThresholdsCallback = callback;
+}
+
+void WebServerManager::setSetFractionThresholdsCallback(std::function<bool(const String&)> callback) {
+    setFractionThresholdsCallback = callback;
+}
+
+void WebServerManager::setResetFractionSessionCallback(std::function<void()> callback) {
+    resetFractionSessionCallback = callback;
+}
+
+void WebServerManager::setGetFractionModeCallback(std::function<String()> callback) {
+    getFractionModeCallback = callback;
+}
+
+void WebServerManager::setSetFractionModeCallback(std::function<bool(const String&)> callback) {
+    setFractionModeCallback = callback;
 }
 
 void WebServerManager::handleOTA() {

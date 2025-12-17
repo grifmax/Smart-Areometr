@@ -5,6 +5,11 @@ const UPDATE_INTERVAL = 2000; // 2 секунды
 // === Глобальные переменные ===
 let updateTimer = null;
 let currentFraction = 'unknown';
+let lastAlcoholRate = 0;
+let audioEnabled = true;
+let audioThreshold = 1.0; // %/мин
+let audioContext = null;
+let lastAlertTime = 0;
 
 // Данные фракций
 const FRACTION_INFO = {
@@ -19,11 +24,154 @@ const FRACTION_INFO = {
 // === Инициализация ===
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Fractions page initialized');
+    loadMode();
     loadThresholds();
     loadFractionStatus();
     loadStats();
     startMonitoring();
+    initAudio();
 });
+
+// === Загрузка режима работы ===
+async function loadMode() {
+    try {
+        const response = await fetch(`${API_BASE}/api/fractions/mode`);
+        if (!response.ok) {
+            console.log('Using default mode');
+            return;
+        }
+
+        const data = await response.json();
+        const mode = data.mode || 'mash';
+
+        // Устанавливаем радио-кнопку
+        const radio = document.querySelector(`input[name="detectionMode"][value="${mode}"]`);
+        if (radio) radio.checked = true;
+
+        // Загружаем настройки аудио из localStorage
+        const savedAudioEnabled = localStorage.getItem('audioEnabled');
+        const savedAudioThreshold = localStorage.getItem('audioThreshold');
+
+        if (savedAudioEnabled !== null) {
+            audioEnabled = savedAudioEnabled === 'true';
+            document.getElementById('audioEnabled').checked = audioEnabled;
+        }
+
+        if (savedAudioThreshold !== null) {
+            audioThreshold = parseFloat(savedAudioThreshold);
+            document.getElementById('audioThreshold').value = audioThreshold;
+        }
+
+    } catch (error) {
+        console.error('Error loading mode:', error);
+    }
+}
+
+// === Сохранение режима работы ===
+async function saveMode() {
+    const selectedMode = document.querySelector('input[name="detectionMode"]:checked').value;
+    audioEnabled = document.getElementById('audioEnabled').checked;
+    audioThreshold = parseFloat(document.getElementById('audioThreshold').value);
+
+    try {
+        // Сохраняем режим на сервер
+        const response = await fetch(`${API_BASE}/api/fractions/mode`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ mode: selectedMode })
+        });
+
+        if (!response.ok) throw new Error('Failed to save mode');
+
+        // Сохраняем аудио настройки в localStorage
+        localStorage.setItem('audioEnabled', audioEnabled);
+        localStorage.setItem('audioThreshold', audioThreshold);
+
+        showNotification('Настройки сохранены успешно!', 'success');
+
+    } catch (error) {
+        console.error('Error saving mode:', error);
+        showNotification('Ошибка сохранения настроек', 'error');
+    }
+}
+
+// === Инициализация аудио ===
+function initAudio() {
+    // Создаем AudioContext при первом взаимодействии пользователя
+    document.addEventListener('click', () => {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            console.log('AudioContext initialized');
+        }
+    }, { once: true });
+}
+
+// === Воспроизведение звукового сигнала ===
+function playAlertSound() {
+    if (!audioContext || !audioEnabled) return;
+
+    // Защита от частых срабатываний (минимум 10 секунд между сигналами)
+    const now = Date.now();
+    if (now - lastAlertTime < 10000) return;
+    lastAlertTime = now;
+
+    try {
+        // Создаем осциллятор для генерации звука
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        // Настройка звука (три коротких бипа)
+        oscillator.frequency.value = 800; // Частота 800 Hz
+        oscillator.type = 'sine';
+
+        // Envelope для более приятного звука
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+        gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.1);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.1);
+
+        // Второй бип
+        setTimeout(() => {
+            const osc2 = audioContext.createOscillator();
+            const gain2 = audioContext.createGain();
+            osc2.connect(gain2);
+            gain2.connect(audioContext.destination);
+            osc2.frequency.value = 800;
+            osc2.type = 'sine';
+            gain2.gain.setValueAtTime(0, audioContext.currentTime);
+            gain2.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+            gain2.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.1);
+            osc2.start(audioContext.currentTime);
+            osc2.stop(audioContext.currentTime + 0.1);
+        }, 150);
+
+        // Третий бип
+        setTimeout(() => {
+            const osc3 = audioContext.createOscillator();
+            const gain3 = audioContext.createGain();
+            osc3.connect(gain3);
+            gain3.connect(audioContext.destination);
+            osc3.frequency.value = 800;
+            osc3.type = 'sine';
+            gain3.gain.setValueAtTime(0, audioContext.currentTime);
+            gain3.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+            gain3.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.1);
+            osc3.start(audioContext.currentTime);
+            osc3.stop(audioContext.currentTime + 0.1);
+        }, 300);
+
+        console.log('Alert sound played');
+    } catch (error) {
+        console.error('Error playing sound:', error);
+    }
+}
 
 // === Загрузка порогов ===
 async function loadThresholds() {
@@ -109,6 +257,14 @@ async function loadFractionStatus() {
             const rateElem = document.getElementById('alcoholRate');
             rateElem.textContent = rate.toFixed(2) + ' %/мин';
             rateElem.style.color = rate < 0 ? '#F44336' : '#4CAF50';
+
+            // Проверка на резкое падение крепости
+            if (rate < -audioThreshold && audioEnabled) {
+                playAlertSound();
+                showNotification(`⚠️ Резкое падение крепости: ${rate.toFixed(2)} %/мин`, 'error');
+            }
+
+            lastAlcoholRate = rate;
         }
 
         if (status.fraction_volume !== undefined) {
@@ -503,6 +659,73 @@ style.textContent = `
     @keyframes slideOut {
         from { transform: translateX(0); opacity: 1; }
         to { transform: translateX(400px); opacity: 0; }
+    }
+
+    .mode-selector h3 {
+        margin-top: 0;
+        margin-bottom: var(--spacing);
+        color: var(--primary-color);
+    }
+
+    .radio-group {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing);
+    }
+
+    .radio-label {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: var(--spacing);
+        background: var(--bg-color);
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .radio-label:hover {
+        border-color: var(--primary-color);
+        background: var(--primary-light);
+    }
+
+    .radio-label input[type="radio"] {
+        margin-top: 4px;
+        cursor: pointer;
+    }
+
+    .radio-label input[type="radio"]:checked + .radio-content {
+        color: var(--primary-color);
+    }
+
+    .radio-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .radio-content strong {
+        font-size: 1.125rem;
+    }
+
+    .radio-content small {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
     }
 `;
 document.head.appendChild(style);

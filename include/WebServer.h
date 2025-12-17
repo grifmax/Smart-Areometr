@@ -35,6 +35,15 @@ private:
     std::function<void()> clearCalibrationCallback;
     std::function<String()> getCalibrationDataCallback;            // -> JSON с точками
 
+    // Callback функции для работы с FractionDetector
+    std::function<String()> getFractionStatusCallback;              // -> JSON с текущим статусом фракций
+    std::function<String()> getFractionStatsCallback;               // -> JSON со статистикой фракций
+    std::function<String()> getFractionThresholdsCallback;          // -> JSON с порогами
+    std::function<bool(const String&)> setFractionThresholdsCallback; // (JSON) -> success
+    std::function<void()> resetFractionSessionCallback;             // Сброс сессии
+    std::function<String()> getFractionModeCallback;                // -> режим работы
+    std::function<bool(const String&)> setFractionModeCallback;     // (mode) -> success
+
     /**
      * @brief Настроить маршруты веб-сервера
      */
@@ -147,6 +156,41 @@ public:
      * @brief Установить callback для получения данных калибровки
      */
     void setGetCalibrationDataCallback(std::function<String()> callback);
+
+    /**
+     * @brief Установить callback для получения статуса фракций
+     */
+    void setGetFractionStatusCallback(std::function<String()> callback);
+
+    /**
+     * @brief Установить callback для получения статистики фракций
+     */
+    void setGetFractionStatsCallback(std::function<String()> callback);
+
+    /**
+     * @brief Установить callback для получения порогов фракций
+     */
+    void setGetFractionThresholdsCallback(std::function<String()> callback);
+
+    /**
+     * @brief Установить callback для установки порогов фракций
+     */
+    void setSetFractionThresholdsCallback(std::function<bool(const String&)> callback);
+
+    /**
+     * @brief Установить callback для сброса сессии фракций
+     */
+    void setResetFractionSessionCallback(std::function<void()> callback);
+
+    /**
+     * @brief Установить callback для получения режима работы
+     */
+    void setGetFractionModeCallback(std::function<String()> callback);
+
+    /**
+     * @brief Установить callback для установки режима работы
+     */
+    void setSetFractionModeCallback(std::function<bool(const String&)> callback);
 
     /**
      * @brief Обработка OTA (вызывать в loop)

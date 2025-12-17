@@ -17,6 +17,14 @@ enum class Fraction {
 };
 
 /**
+ * @brief Режим работы детектора фракций
+ */
+enum class DetectionMode {
+    MASH_MODE,       // Первая перегонка из браги - автоматическое определение фракций
+    MONITORING_MODE  // Режим мониторинга - только телеметрия, без авто-детекции
+};
+
+/**
  * @brief Настройки порогов фракций
  */
 struct FractionThresholds {
@@ -60,6 +68,7 @@ private:
     FractionThresholds thresholds;
     Fraction currentFraction;
     Fraction previousFraction;
+    DetectionMode mode;  // Режим работы детектора
 
     // История измерений для расчета скорости изменения
     static const uint8_t HISTORY_SIZE = 10;
@@ -176,6 +185,22 @@ public:
      * @brief Принудительно установить фракцию (ручной режим)
      */
     void setFraction(Fraction f);
+
+    /**
+     * @brief Установить режим работы детектора
+     * @param m Режим (MASH_MODE или MONITORING_MODE)
+     */
+    void setMode(DetectionMode m);
+
+    /**
+     * @brief Получить текущий режим работы
+     */
+    DetectionMode getMode() const;
+
+    /**
+     * @brief Получить название режима
+     */
+    static String getModeName(DetectionMode m);
 
     /**
      * @brief Экспорт сессии в JSON
