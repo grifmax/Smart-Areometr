@@ -12,14 +12,14 @@ void CapacitiveSensorV2::begin() {
     // Настройка touch pin
     Serial.println("Capacitive sensor V2 initialized on pin " + String(pin));
 
-#ifdef ESP32
-    // Только для оригинального ESP32 с поддержкой touchRead
-    // Выполняем первое считывание для инициализации
+#if SOC_TOUCH_SENSOR_NUM > 0
+    // Только для ESP32 с аппаратным модулем тачсенсора
     touchRead(pin);
     delay(100);
 #else
-    // Для ESP32-C3 используем ADC вместо touch sensor
+    // Для ESP32-C3 и других без тачсенсора - используем ADC
     pinMode(pin, INPUT);
+    analogSetAttenuation(ADC_11db);  // Полный диапазон 0-3.3V
     delay(100);
 #endif
 
@@ -27,7 +27,7 @@ void CapacitiveSensorV2::begin() {
     Serial.println("Calibrating touch sensor baseline...");
     uint32_t sum = 0;
     for (int i = 0; i < 50; i++) {
-#ifdef ESP32
+#if SOC_TOUCH_SENSOR_NUM > 0
         sum += touchRead(pin);
 #else
         sum += analogRead(pin);
@@ -46,7 +46,7 @@ uint16_t CapacitiveSensorV2::getRawValue() {
     uint16_t maxVal = 0;
 
     for (uint16_t i = 0; i < samples; i++) {
-#ifdef ESP32
+#if SOC_TOUCH_SENSOR_NUM > 0
         values[i] = touchRead(pin);
 #else
         values[i] = analogRead(pin);
