@@ -48,4 +48,32 @@
 #define OTA_HOSTNAME "areometr"
 #define OTA_PASSWORD "admin"
 
+// === MQTT Configuration ===
+#define MQTT_ENABLED false               // По умолчанию выключено
+#define MQTT_SERVER "192.168.1.100"      // Адрес MQTT broker
+#define MQTT_PORT 1883                   // Порт MQTT
+#define MQTT_USER ""                     // Имя пользователя (пусто = без авторизации)
+#define MQTT_PASSWORD ""                 // Пароль
+#define MQTT_CLIENT_ID "smart-areometr"  // ID клиента
+#define MQTT_RECONNECT_INTERVAL 5000     // Интервал переподключения (мс)
+#define MQTT_PUBLISH_INTERVAL 5000       // Интервал публикации данных (мс)
+
+// MQTT топики (базовый топик + подтопики)
+#define MQTT_BASE_TOPIC "distillery/areometer"
+#define MQTT_TOPIC_STATE "state"
+#define MQTT_TOPIC_ALCOHOL "alcohol"
+#define MQTT_TOPIC_TEMPERATURE "temperature"
+#define MQTT_TOPIC_FRACTION "fraction"
+#define MQTT_TOPIC_STABILITY "stability"
+#define MQTT_TOPIC_AVAILABILITY "availability"
+
+// MQTT команды (подписка)
+#define MQTT_TOPIC_COMMAND "command"
+#define MQTT_TOPIC_CALIBRATE "calibrate"
+#define MQTT_TOPIC_SET_THRESHOLDS "set_thresholds"
+
+// Home Assistant Discovery
+#define MQTT_HA_DISCOVERY_ENABLED true
+#define MQTT_HA_DISCOVERY_PREFIX "homeassistant"
+
 #endif // CONFIG_H

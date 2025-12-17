@@ -3,7 +3,9 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include "config.h"
 
 /**
  * @brief Мост для публикации данных в MQTT broker
@@ -16,7 +18,8 @@
  */
 class MQTTBridge {
 private:
-    // PubSubClient *client;  // Будет добавлено после установки библиотеки
+    WiFiClient wifiClient;
+    PubSubClient* mqttClient;
 
     String server;
     uint16_t port;
