@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "SerialCompat.h"
 #include "DisplayManager.h"
 #include "config.h"
 

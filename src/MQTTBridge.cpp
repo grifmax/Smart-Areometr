@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "SerialCompat.h"
 #include "MQTTBridge.h"
 
 // Статическая ссылка на текущий экземпляр для callback

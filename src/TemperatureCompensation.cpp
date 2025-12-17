@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "SerialCompat.h"
 #include "TemperatureCompensation.h"
 #include "config.h"
 

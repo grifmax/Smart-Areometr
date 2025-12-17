@@ -1,5 +1,6 @@
 #include "WebServer.h"
 #include "config.h"
+#include "SerialCompat.h"
 #include <LittleFS.h>
 
 WebServerManager::WebServerManager(uint16_t port)

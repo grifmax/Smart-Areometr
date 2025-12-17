@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "SerialCompat.h"
 #include "FractionDetector.h"
 
 FractionDetector::FractionDetector()

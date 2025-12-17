@@ -7,6 +7,7 @@
 #include <AsyncTCP.h>
 #include <ArduinoJson.h>
 #include <ArduinoOTA.h>
+#include "config.h"  // Нужно для WEB_SERVER_PORT, DEFAULT_SSID, DEFAULT_PASSWORD
 
 /**
  * @brief Класс для управления веб-сервером и Wi-Fi подключением

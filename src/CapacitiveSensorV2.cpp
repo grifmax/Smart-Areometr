@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "SerialCompat.h"
 #include <math.h>
 #include "CapacitiveSensorV2.h"
 #include "config.h"
