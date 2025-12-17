@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление фракциями - Smart Areometr</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Навигация -->
+        <nav class="navbar">
+            <div class="nav-brand">
+                <span class="icon">🍺</span>
+                <span class="brand-text">Smart Areometr</span>
+            </div>
+            <div class="nav-menu">
+                <a href="/" class="nav-link">Главная</a>
+                <a href="/calibration.html" class="nav-link">Калибровка</a>
+                <a href="/fractions.html" class="nav-link active">Фракции</a>
+                <a href="/mqtt.html" class="nav-link">MQTT</a>
+                <a href="/settings.html" class="nav-link">Настройки</a>
+                <a href="/logs.html" class="nav-link">Логи</a>
+            </div>
+        </nav>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <!-- Текущая фракция -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Текущее состояние</h2>
+                </div>
+                <div class="card-body">
+                    <div class="current-fraction">
+                        <div class="fraction-display" id="fractionDisplay">
+                            <div class="fraction-icon" id="fractionIcon">🧪</div>
+                            <div class="fraction-name" id="fractionName">Ожидание...</div>
+                            <div class="fraction-desc" id="fractionDesc">Начните перегонку</div>
+                        </div>
+                        <div class="fraction-stats">
+                            <div class="stat-box">
+                                <div class="stat-label">Крепость</div>
+                                <div class="stat-value" id="currentAlcohol">--%</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Скорость изменения</div>
+                                <div class="stat-value" id="alcoholRate">-- %/мин</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Объем фракции</div>
+                                <div class="stat-value" id="fractionVolume">-- мл</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Общий объем</div>
+                                <div class="stat-value" id="totalVolume">-- мл</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Настройки порогов -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>⚙️ Настройка порогов фракций</h2>
+                </div>
+                <div class="card-body">
+                    <form id="thresholdsForm" onsubmit="saveThresholds(event)">
+                        <!-- Первач -->
+                        <div class="threshold-section foreshots">
+                            <h3>🔴 Первач (Foreshots)</h3>
+                            <p class="threshold-desc">Метанол и легкие примеси - ОПАСНО!</p>
+                            <div class="form-group">
+                                <label for="foreshotsVolume">Объем первача (мл):</label>
+                                <input type="number" id="foreshotsVolume" min="0" max="200" step="10" value="50">
+                                <small>Рекомендуется: 30-50 мл с 1л браги</small>
+                            </div>
+                        </div>
+
+                        <!-- Головы -->
+                        <div class="threshold-section heads">
+                            <h3>🟠 Головы (Heads)</h3>
+                            <p class="threshold-desc">Ацетон, эфиры - неприятный запах и вкус</p>
+                            <div class="form-group">
+                                <label for="headsThreshold">Порог крепости (%):</label>
+                                <input type="number" id="headsThreshold" min="80" max="95" step="0.5" value="85">
+                                <small>Выше этого значения - головы. Обычно: 85-90%</small>
+                            </div>
+                        </div>
+
+                        <!-- Тело -->
+                        <div class="threshold-section body">
+                            <h3>🟢 Тело (Body)</h3>
+                            <p class="threshold-desc">Питьевая фракция - основной продукт</p>
+                            <div class="form-grid-two">
+                                <div class="form-group">
+                                    <label for="bodyMin">Минимум (%):</label>
+                                    <input type="number" id="bodyMin" min="70" max="85" step="0.5" value="78">
+                                    <small>Начало тела</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="bodyMax">Максимум (%):</label>
+                                    <input type="number" id="bodyMax" min="78" max="90" step="0.5" value="85">
+                                    <small>Конец тела</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Хвосты -->
+                        <div class="threshold-section tails">
+                            <h3>🟡 Хвосты (Tails)</h3>
+                            <p class="threshold-desc">Сивушные масла - мутный дистиллят</p>
+                            <div class="form-grid-two">
+                                <div class="form-group">
+                                    <label for="tailsThreshold">Порог крепости (%):</label>
+                                    <input type="number" id="tailsThreshold" min="40" max="80" step="0.5" value="78">
+                                    <small>Ниже этого - хвосты. Обычно: 75-78%</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="rateThreshold">Скорость падения (%/мин):</label>
+                                    <input type="number" id="rateThreshold" min="0.1" max="2" step="0.1" value="0.5">
+                                    <small>Быстрое падение - переход к хвостам</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary btn-large">Сохранить пороги</button>
+                            <button type="button" class="btn btn-secondary" onclick="loadDefaults()">Сбросить к умолчанию</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Статистика по фракциям -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>📊 Статистика текущей сессии</h2>
+                    <button class="btn btn-secondary btn-small" onclick="resetSession()">Новая сессия</button>
+                </div>
+                <div class="card-body">
+                    <div id="statsContainer" class="stats-container">
+                        <div class="empty-state">
+                            <p>Статистика пока отсутствует</p>
+                            <small>Начните перегонку для сбора данных</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- События MQTT -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>📡 Интеграция с автоматикой</h2>
+                </div>
+                <div class="card-body">
+                    <div class="mqtt-integration">
+                        <h3>События смены фракций (MQTT):</h3>
+                        <p>Smart Areometr публикует события смены фракций в MQTT топик <code>distillery/areometer/fraction</code></p>
+
+                        <h4>Подписка на события:</h4>
+                        <pre><code>mosquitto_sub -h 192.168.1.100 -t "distillery/areometer/fraction" -v</code></pre>
+
+                        <h4>Пример события:</h4>
+                        <pre><code>{
+  "event": "fraction_change",
+  "from": "heads",
+  "to": "body",
+  "alcohol": 82.5,
+  "temperature": 20.3,
+  "timestamp": 1234567890
+}</code></pre>
+
+                        <h4>Автоматика может:</h4>
+                        <ul>
+                            <li>✅ Автоматически переключать клапаны при смене фракции</li>
+                            <li>✅ Регулировать скорость отбора</li>
+                            <li>✅ Управлять нагревом на основе фракции</li>
+                            <li>✅ Отправлять уведомления оператору</li>
+                            <li>✅ Вести лог перегонки</li>
+                        </ul>
+
+                        <div class="warning-box" style="margin-top: var(--spacing);">
+                            <strong>⚠️ Важно:</strong>
+                            <p>Smart Areometr только определяет фракции и отправляет события. Управление клапанами и приемниками выполняет внешняя автоматика через подписку на MQTT.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Справочная информация -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>📚 Справочная информация</h2>
+                </div>
+                <div class="card-body">
+                    <div class="reference">
+                        <h3>Характеристики фракций:</h3>
+
+                        <div class="fraction-info">
+                            <h4 style="color: #D32F2F;">🔴 Первач (Foreshots)</h4>
+                            <p><strong>Объем:</strong> 30-50 мл на 1л АС в браге</p>
+                            <p><strong>Состав:</strong> Метанол, муравьиная кислота</p>
+                            <p><strong>Опасность:</strong> ЯДОВИТ! Обязательно отбирать отдельно</p>
+                        </div>
+
+                        <div class="fraction-info">
+                            <h4 style="color: #F57C00;">🟠 Головы (Heads)</h4>
+                            <p><strong>Крепость:</strong> 85-95%</p>
+                            <p><strong>Состав:</strong> Ацетон, альдегиды, эфиры</p>
+                            <p><strong>Признаки:</strong> Резкий запах, слезоточивость, головная боль</p>
+                            <p><strong>Объем:</strong> 8-15% от АС в браге</p>
+                        </div>
+
+                        <div class="fraction-info">
+                            <h4 style="color: #4CAF50;">🟢 Тело (Body)</h4>
+                            <p><strong>Крепость:</strong> 78-85%</p>
+                            <p><strong>Состав:</strong> Этиловый спирт + органолептика</p>
+                            <p><strong>Признаки:</strong> Приятный запах, мягкий вкус</p>
+                            <p><strong>Объем:</strong> 70-85% от АС в браге</p>
+                        </div>
+
+                        <div class="fraction-info">
+                            <h4 style="color: #FBC02D;">🟡 Хвосты (Tails)</h4>
+                            <p><strong>Крепость:</strong> <78%</p>
+                            <p><strong>Состав:</strong> Сивушные масла, изоамилол</p>
+                            <p><strong>Признаки:</strong> Помутнение при разбавлении, сивушный запах</p>
+                            <p><strong>Использование:</strong> Добавить в следующую брагу для повторной перегонки</p>
+                        </div>
+
+                        <h3>Рекомендуемая стратегия отбора:</h3>
+                        <ol>
+                            <li><strong>Первач:</strong> Отбирать первые 30-50 мл в отдельную емкость и утилизировать</li>
+                            <li><strong>Головы:</strong> Отбирать до крепости 85% в отдельную емкость</li>
+                            <li><strong>Тело:</strong> Отбирать 85% → 78% в питьевую емкость</li>
+                            <li><strong>Хвосты:</strong> Отбирать 78% → стоп в отдельную емкость</li>
+                            <li><strong>Завершение:</strong> Прекратить отбор при крепости ~40-50%</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Футер -->
+        <footer class="footer">
+            <p>&copy; 2025 Smart Areometr. MIT License</p>
+        </footer>
+    </div>
+
+    <script src="/js/fractions.js"></script>
+</body>
+</html>
