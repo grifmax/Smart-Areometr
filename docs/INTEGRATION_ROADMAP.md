@@ -247,7 +247,8 @@ lib_deps =
     adafruit/Adafruit GFX Library
     adafruit/Adafruit SSD1306
     bblanchon/ArduinoJson
-    me-no-dev/ESPAsyncWebServer
+    https://github.com/ESP32Async/ESPAsyncWebServer.git  # Поддерживаемый форк для ESP32-C3
+    me-no-dev/AsyncTCP@^1.1.1
     paulstoffregen/OneWire
     milesburton/DallasTemperature
 

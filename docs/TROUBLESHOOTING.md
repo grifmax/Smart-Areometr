@@ -365,6 +365,7 @@ Serial.println(ESP.getFreeHeap());
 **Симптомы:**
 - Спонтанные перезагрузки
 - Ошибка: "Guru Meditation Error" или "Brownout detector"
+- Ошибка: "Load access fault" при работе веб-сервера
 
 **Решения:**
 
@@ -376,8 +377,29 @@ Serial.println(ESP.getFreeHeap());
 2. **Stack overflow:**
    - Уменьшите размер локальных переменных
    - Проверьте рекурсивные вызовы
+   - Для AsyncTCP увеличьте размер стека в `platformio.ini`:
+   ```ini
+   build_flags =
+       -D CONFIG_ASYNC_TCP_STACK_SIZE=16384
+   ```
 
-3. **Проверка Watchdog:**
+3. **Проблемы с веб-сервером (Guru Meditation Error: Load access fault):**
+   - **Решение:** Используйте поддерживаемый форк ESPAsyncWebServer
+   - В `platformio.ini` замените библиотеку:
+   ```ini
+   lib_deps =
+       https://github.com/ESP32Async/ESPAsyncWebServer.git
+       me-no-dev/AsyncTCP@^1.1.1
+   ```
+   - Добавьте флаг компиляции для совместимости:
+   ```ini
+   build_flags =
+       -fpermissive
+       -D CONFIG_ASYNC_TCP_STACK_SIZE=16384
+   ```
+   - Старая библиотека `ESPAsyncWebServer-esphome` может вызывать паники на ESP32-C3
+
+4. **Проверка Watchdog:**
 ```cpp
 // Добавьте в loop()
 esp_task_wdt_reset();
@@ -386,6 +408,42 @@ esp_task_wdt_reset();
 ---
 
 ## Проблемы с веб-интерфейсом
+
+### Веб-сервер вызывает панику (Guru Meditation Error)
+
+**Симптомы:**
+- Ошибка: "Guru Meditation Error: Core 0 panic'ed (Load access fault)"
+- Перезагрузка при обращении к веб-интерфейсу
+- Ошибка в `AsyncWebServer::_rewriteRequest`
+
+**Причина:**
+Старая библиотека `ESPAsyncWebServer-esphome` имеет проблемы совместимости с ESP32-C3 и может вызывать паники при обработке HTTP запросов.
+
+**Решение:**
+1. Используйте поддерживаемый форк ESPAsyncWebServer:
+   ```ini
+   # В platformio.ini
+   lib_deps =
+       https://github.com/ESP32Async/ESPAsyncWebServer.git
+       me-no-dev/AsyncTCP@^1.1.1
+   ```
+
+2. Добавьте флаги компиляции:
+   ```ini
+   build_flags =
+       -fpermissive
+       -D CONFIG_ASYNC_TCP_STACK_SIZE=16384
+   ```
+
+3. Пересоберите проект:
+   ```bash
+   pio run --target clean
+   pio run
+   ```
+
+**Примечание:** Форк ESP32Async/ESPAsyncWebServer активно поддерживается сообществом и совместим с ESP32-C3.
+
+---
 
 ### Страница не загружается
 
