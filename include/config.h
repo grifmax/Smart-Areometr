@@ -5,10 +5,19 @@
 #define FIRMWARE_VERSION "1.0.0"
 
 // Пины подключения OLED дисплея (I2C)
-#define OLED_SDA 8
-#define OLED_SCL 9
+// Для модулей ESP32-C3 с встроенным OLED обычно используются GPIO5 и GPIO6
+#define OLED_SDA 5
+#define OLED_SCL 6
+// Размер дисплея: для 0.42" физически 72x40, но контроллер SSD1306 работает как 128x64
+// Нужно использовать 128x64 с offset для правильного отображения
+// См. https://github.com/peff74/ESP32-C3_OLED
 #define OLED_WIDTH 128
 #define OLED_HEIGHT 64
+#define OLED_OFFSET_X 30  // Смещение по X: (128-72)/2 = 28, округляем до 30
+#define OLED_OFFSET_Y 24  // Смещение по Y: увеличено для опускания изображения ниже
+#define OLED_PHYSICAL_WIDTH 72   // Физическая ширина дисплея
+#define OLED_PHYSICAL_HEIGHT 40  // Физическая высота дисплея
+// Адрес I2C: обычно 0x3C, иногда 0x3D
 #define OLED_ADDR 0x3C
 
 // Пин емкостного датчика (используем touch pin ESP32-C3)
