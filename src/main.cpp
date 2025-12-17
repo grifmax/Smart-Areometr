@@ -100,8 +100,8 @@ void setup() {
 }
 
 void loop() {
-    // Обработка OTA обновлений
-    webServer.handleOTA();
+    // Обработка веб-сервера и OTA обновлений
+    webServer.handle();
 
     // Обработка кнопок
     handleButtons();

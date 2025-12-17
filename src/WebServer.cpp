@@ -37,7 +37,10 @@ bool WebServerManager::beginClient(const String &s, const String &p) {
 
         setupRoutes();
         setupOTA();
+        
+        delay(500);
         server->begin();
+        delay(500);
 
         return true;
     } else {
@@ -59,10 +62,21 @@ bool WebServerManager::beginAP(const String &s, const String &p) {
     if (success) {
         deviceIP = WiFi.softAPIP().toString();
         Serial.println("AP Created! IP: " + deviceIP);
+        
+        if (!LittleFS.begin(false)) {
+            Serial.println("WARNING: LittleFS not mounted, web interface may not work");
+        } else {
+            Serial.println("LittleFS mounted for web server");
+        }
 
         setupRoutes();
         setupOTA();
+        
+        delay(500);
         server->begin();
+        delay(500);
+        
+        Serial.println("Web server started on port " + String(WEB_SERVER_PORT));
 
         return true;
     } else {
@@ -72,83 +86,160 @@ bool WebServerManager::beginAP(const String &s, const String &p) {
 }
 
 void WebServerManager::setupRoutes() {
-    // Статические файлы из LittleFS
     // Главная страница
-    server->on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    server->on("/", HTTP_GET, [this](AsyncWebServerRequest *request) {
         if (LittleFS.exists("/index.html")) {
             request->send(LittleFS, "/index.html", "text/html");
         } else {
-            request->send(404, "text/plain", "index.html not found");
+            const char* html = "<!DOCTYPE html><html><head><title>Smart Areometr</title><meta charset='UTF-8'>"
+                "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+                "<style>body{font-family:Arial;text-align:center;padding:50px;background:#f0f0f0;}"
+                "h1{color:#333;} .info{background:white;padding:20px;border-radius:10px;margin:20px auto;max-width:600px;}"
+                "code{background:#f5f5f5;padding:2px 6px;border-radius:3px;}</style></head><body>"
+                "<h1>Smart Areometr</h1><div class='info'><p><strong>Веб-интерфейс не загружен в LittleFS.</strong></p>"
+                "<p>Выполните: <code>pio run -t uploadfs</code></p>"
+                "<p>API: <a href='/api/measurement'>/api/measurement</a> | <a href='/api/status'>/api/status</a></p></div></body></html>";
+            request->send(200, "text/html", html);
         }
     });
 
     // HTML страницы
     server->on("/calibration.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(LittleFS, "/calibration.html", "text/html");
+        if (LittleFS.exists("/calibration.html")) {
+            request->send(LittleFS, "/calibration.html", "text/html");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
     });
 
     server->on("/settings.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(LittleFS, "/settings.html", "text/html");
+        if (LittleFS.exists("/settings.html")) {
+            request->send(LittleFS, "/settings.html", "text/html");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
     });
 
     server->on("/logs.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(LittleFS, "/logs.html", "text/html");
+        if (LittleFS.exists("/logs.html")) {
+            request->send(LittleFS, "/logs.html", "text/html");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
     });
 
     server->on("/fractions.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(LittleFS, "/fractions.html", "text/html");
+        if (LittleFS.exists("/fractions.html")) {
+            request->send(LittleFS, "/fractions.html", "text/html");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
     });
 
     server->on("/mqtt.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(LittleFS, "/mqtt.html", "text/html");
+        if (LittleFS.exists("/mqtt.html")) {
+            request->send(LittleFS, "/mqtt.html", "text/html");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
     });
 
     // CSS файлы
     server->on("/css/style.css", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(LittleFS, "/css/style.css", "text/css");
+        if (LittleFS.exists("/css/style.css")) {
+            request->send(LittleFS, "/css/style.css", "text/css");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
     });
 
     server->on("/css/calibration.css", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(LittleFS, "/css/calibration.css", "text/css");
+        if (LittleFS.exists("/css/calibration.css")) {
+            request->send(LittleFS, "/css/calibration.css", "text/css");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
     });
 
     server->on("/css/logs.css", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(LittleFS, "/css/logs.css", "text/css");
+        if (LittleFS.exists("/css/logs.css")) {
+            request->send(LittleFS, "/css/logs.css", "text/css");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
     });
 
     // JavaScript файлы
     server->on("/js/app.js", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(LittleFS, "/js/app.js", "application/javascript");
+        if (LittleFS.exists("/js/app.js")) {
+            request->send(LittleFS, "/js/app.js", "application/javascript");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
     });
 
     server->on("/js/calibration.js", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(LittleFS, "/js/calibration.js", "application/javascript");
+        if (LittleFS.exists("/js/calibration.js")) {
+            request->send(LittleFS, "/js/calibration.js", "application/javascript");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
     });
 
     server->on("/js/settings.js", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(LittleFS, "/js/settings.js", "application/javascript");
+        if (LittleFS.exists("/js/settings.js")) {
+            request->send(LittleFS, "/js/settings.js", "application/javascript");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
     });
 
     server->on("/js/logs.js", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(LittleFS, "/js/logs.js", "application/javascript");
+        if (LittleFS.exists("/js/logs.js")) {
+            request->send(LittleFS, "/js/logs.js", "application/javascript");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
     });
 
     server->on("/js/fractions.js", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(LittleFS, "/js/fractions.js", "application/javascript");
+        if (LittleFS.exists("/js/fractions.js")) {
+            request->send(LittleFS, "/js/fractions.js", "application/javascript");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
     });
 
     server->on("/js/mqtt.js", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(LittleFS, "/js/mqtt.js", "application/javascript");
+        if (LittleFS.exists("/js/mqtt.js")) {
+            request->send(LittleFS, "/js/mqtt.js", "application/javascript");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
+    });
+
+    // Стандартные запросы браузера
+    server->on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(204);  // No Content
+    });
+    
+    server->on("/robots.txt", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(200, "text/plain", "User-agent: *\nDisallow: /");
     });
 
     // API: Получить данные измерений
     server->on("/api/measurement", HTTP_GET, [this](AsyncWebServerRequest *request) {
-        request->send(200, "application/json", generateMeasurementJSON());
+        String json = generateMeasurementJSON();
+        if (json.length() > 0) {
+            request->send(200, "application/json", json);
+        } else {
+            request->send(500, "application/json", "{\"error\":\"internal_error\"}");
+        }
     });
 
     // API: Получить статус
     server->on("/api/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
-        JsonDocument doc;
+        StaticJsonDocument<256> doc;
         doc["firmware"] = FIRMWARE_VERSION;
         doc["wifi_mode"] = apMode ? "AP" : "Client";
         doc["ssid"] = ssid;
@@ -156,8 +247,11 @@ void WebServerManager::setupRoutes() {
         doc["calibrated"] = calibratedCallback ? calibratedCallback() : false;
 
         String response;
-        serializeJson(doc, response);
-        request->send(200, "application/json", response);
+        if (serializeJson(doc, response) > 0) {
+            request->send(200, "application/json", response);
+        } else {
+            request->send(500, "application/json", "{\"error\":\"serialization_failed\"}");
+        }
     });
 
     // API: Получить логи
@@ -179,7 +273,6 @@ void WebServerManager::setupRoutes() {
 
     // API: Калибровка воды
     server->on("/api/calibrate/water", HTTP_POST, [](AsyncWebServerRequest *request) {
-        // Этот эндпоинт будет вызывать калибровку через callback
         request->send(200, "application/json", "{\"status\":\"calibration_started\",\"step\":\"water\"}");
     });
 
@@ -203,11 +296,15 @@ void WebServerManager::setupRoutes() {
         [](AsyncWebServerRequest *request) {},
         nullptr,
         [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
-            // Парсим JSON из тела запроса
-            JsonDocument doc;
+            if (total > 512) {
+                request->send(413, "application/json", "{\"error\":\"payload_too_large\"}");
+                return;
+            }
+            
+            StaticJsonDocument<256> doc;
             DeserializationError error = deserializeJson(doc, (const char*)data, len);
 
-            if (error) {
+            if (error || len == 0) {
                 request->send(400, "application/json", "{\"error\":\"invalid_json\"}");
                 return;
             }
@@ -218,13 +315,12 @@ void WebServerManager::setupRoutes() {
             if (addCalibrationPointCallback) {
                 bool success = addCalibrationPointCallback(alcoholPercent, temperature);
                 if (success) {
-                    // Получаем текущее сырое значение для ответа
                     uint16_t rawValue = rawValueCallback ? rawValueCallback() : 0;
                     String response = "{\"status\":\"success\",\"alcohol_percent\":" + String(alcoholPercent) +
                                      ",\"raw_value\":" + String(rawValue) + "}";
                     request->send(200, "application/json", response);
                 } else {
-                    request->send(500, "application/json", "{\"error\":\"failed_to_add_point\",\"message\":\"Maximum points reached or sensor error\"}");
+                    request->send(500, "application/json", "{\"error\":\"failed_to_add_point\"}");
                 }
             } else {
                 request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
@@ -233,8 +329,7 @@ void WebServerManager::setupRoutes() {
     );
 
     // API: Удалить калибровочную точку
-    server->on("/api/calibration/point/*", HTTP_DELETE, [this](AsyncWebServerRequest *request) {
-        // Извлекаем индекс из URL
+    server->on("/api/calibration/point", HTTP_DELETE, [this](AsyncWebServerRequest *request) {
         String url = request->url();
         int lastSlash = url.lastIndexOf('/');
         if (lastSlash == -1) {
@@ -267,8 +362,6 @@ void WebServerManager::setupRoutes() {
     });
 
     // === Fraction Detector API ===
-
-    // API: Получить статус фракций
     server->on("/api/fractions/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
         if (getFractionStatusCallback) {
             String json = getFractionStatusCallback();
@@ -278,7 +371,6 @@ void WebServerManager::setupRoutes() {
         }
     });
 
-    // API: Получить статистику фракций
     server->on("/api/fractions/stats", HTTP_GET, [this](AsyncWebServerRequest *request) {
         if (getFractionStatsCallback) {
             String json = getFractionStatsCallback();
@@ -288,7 +380,6 @@ void WebServerManager::setupRoutes() {
         }
     });
 
-    // API: Получить пороги фракций
     server->on("/api/fractions/thresholds", HTTP_GET, [this](AsyncWebServerRequest *request) {
         if (getFractionThresholdsCallback) {
             String json = getFractionThresholdsCallback();
@@ -298,14 +389,16 @@ void WebServerManager::setupRoutes() {
         }
     });
 
-    // API: Установить пороги фракций
     server->on("/api/fractions/thresholds", HTTP_POST,
-        [](AsyncWebServerRequest *request) {
-            // Заглушка для обработки без тела
-        },
+        [](AsyncWebServerRequest *request) {},
         nullptr,
         [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
-            if (setFractionThresholdsCallback) {
+            if (total > 512) {
+                request->send(413, "application/json", "{\"error\":\"payload_too_large\"}");
+                return;
+            }
+            
+            if (setFractionThresholdsCallback && len > 0) {
                 String body = String((char*)data).substring(0, len);
                 bool success = setFractionThresholdsCallback(body);
                 if (success) {
@@ -314,12 +407,11 @@ void WebServerManager::setupRoutes() {
                     request->send(400, "application/json", "{\"error\":\"invalid_data\"}");
                 }
             } else {
-                request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+                request->send(400, "application/json", "{\"error\":\"no_body\"}");
             }
         }
     );
 
-    // API: Сбросить сессию фракций
     server->on("/api/fractions/reset", HTTP_POST, [this](AsyncWebServerRequest *request) {
         if (resetFractionSessionCallback) {
             resetFractionSessionCallback();
@@ -329,7 +421,6 @@ void WebServerManager::setupRoutes() {
         }
     });
 
-    // API: Получить режим работы
     server->on("/api/fractions/mode", HTTP_GET, [this](AsyncWebServerRequest *request) {
         if (getFractionModeCallback) {
             String json = getFractionModeCallback();
@@ -339,14 +430,16 @@ void WebServerManager::setupRoutes() {
         }
     });
 
-    // API: Установить режим работы
     server->on("/api/fractions/mode", HTTP_POST,
-        [](AsyncWebServerRequest *request) {
-            // Заглушка для обработки без тела
-        },
+        [](AsyncWebServerRequest *request) {},
         nullptr,
         [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
-            if (setFractionModeCallback) {
+            if (total > 512) {
+                request->send(413, "application/json", "{\"error\":\"payload_too_large\"}");
+                return;
+            }
+            
+            if (setFractionModeCallback && len > 0) {
                 String body = String((char*)data).substring(0, len);
                 bool success = setFractionModeCallback(body);
                 if (success) {
@@ -355,12 +448,12 @@ void WebServerManager::setupRoutes() {
                     request->send(400, "application/json", "{\"error\":\"invalid_data\"}");
                 }
             } else {
-                request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+                request->send(400, "application/json", "{\"error\":\"no_body\"}");
             }
         }
     );
 
-    // 404
+    // 404 handler
     server->onNotFound([](AsyncWebServerRequest *request) {
         request->send(404, "text/plain", "Not Found");
     });
@@ -398,10 +491,8 @@ void WebServerManager::setupOTA() {
     Serial.println("OTA configured");
 }
 
-// Функция generateHomePage() удалена - теперь используются статические файлы из LittleFS
-
 String WebServerManager::generateMeasurementJSON() {
-    JsonDocument doc;
+    StaticJsonDocument<256> doc;
 
     doc["alcohol"] = alcoholCallback ? alcoholCallback() : 0.0f;
     doc["temperature"] = temperatureCallback ? temperatureCallback() : 0.0f;
@@ -493,6 +584,11 @@ void WebServerManager::setGetFractionModeCallback(std::function<String()> callba
 
 void WebServerManager::setSetFractionModeCallback(std::function<bool(const String&)> callback) {
     setFractionModeCallback = callback;
+}
+
+void WebServerManager::handle() {
+    // AsyncWebServer обрабатывает запросы автоматически, нужно только OTA
+    ArduinoOTA.handle();
 }
 
 void WebServerManager::handleOTA() {

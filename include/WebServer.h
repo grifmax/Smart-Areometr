@@ -3,8 +3,10 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
-#include <ESPAsyncWebServer.h>
+#include <ESPAsyncWebServer.h>  // Поддерживаемый форк ESPAsyncWebServer
 #include <AsyncTCP.h>
+#include <FS.h>
+#include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <ArduinoOTA.h>
 #include "config.h"  // Нужно для WEB_SERVER_PORT, DEFAULT_SSID, DEFAULT_PASSWORD
@@ -17,7 +19,7 @@
  */
 class WebServerManager {
 private:
-    AsyncWebServer *server;
+    AsyncWebServer *server;  // Используем AsyncWebServer (поддерживаемый форк)
     String ssid;
     String password;
     bool apMode;  // Режим точки доступа
@@ -194,7 +196,12 @@ public:
     void setSetFractionModeCallback(std::function<bool(const String&)> callback);
 
     /**
-     * @brief Обработка OTA (вызывать в loop)
+     * @brief Обработка OTA и веб-сервера (вызывать в loop)
+     */
+    void handle();
+    
+    /**
+     * @brief Обработка OTA (вызывать в loop) - для обратной совместимости
      */
     void handleOTA();
 
