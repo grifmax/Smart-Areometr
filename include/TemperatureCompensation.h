@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include "config.h"
 
 /**
  * @brief Класс для работы с температурным датчиком и компенсации результатов

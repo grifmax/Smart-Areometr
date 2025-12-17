@@ -1,5 +1,6 @@
 #include "DataLogger.h"
 #include "config.h"
+#include <Arduino.h>
 
 DataLogger::DataLogger(const String &filename, int maxRecords)
     : logFile(filename), maxEntries(maxRecords) {

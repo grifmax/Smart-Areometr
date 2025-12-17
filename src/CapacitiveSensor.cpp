@@ -1,5 +1,6 @@
 #include "CapacitiveSensor.h"
 #include "config.h"
+#include <Arduino.h>
 
 CapacitiveSensor::CapacitiveSensor(uint8_t sensorPin, uint16_t numSamples, uint16_t sampleDelay)
     : pin(sensorPin), samples(numSamples), delayMs(sampleDelay) {
@@ -9,11 +10,15 @@ CapacitiveSensor::CapacitiveSensor(uint8_t sensorPin, uint16_t numSamples, uint1
 
 void CapacitiveSensor::begin() {
     // Настройка touch pin
-    // ESP32-C3 автоматически настраивает пины при первом вызове touchRead()
     Serial.println("Capacitive sensor initialized on pin " + String(pin));
 
+#ifdef ESP32
     // Выполняем первое считывание для инициализации
     touchRead(pin);
+#else
+    // Для ESP32-C3 используем ADC вместо touch sensor
+    pinMode(pin, INPUT);
+#endif
     delay(100);
 }
 
@@ -21,7 +26,11 @@ uint16_t CapacitiveSensor::getRawValue() {
     uint32_t sum = 0;
 
     for (uint16_t i = 0; i < samples; i++) {
+#ifdef ESP32
         sum += touchRead(pin);
+#else
+        sum += analogRead(pin);
+#endif
         if (delayMs > 0) {
             delay(delayMs);
         }

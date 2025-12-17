@@ -6,6 +6,7 @@
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <vector>
+#include "config.h"
 
 /**
  * @brief Структура записи измерения

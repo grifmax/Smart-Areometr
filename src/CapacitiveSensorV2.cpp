@@ -1,5 +1,6 @@
 #include "CapacitiveSensorV2.h"
 #include "config.h"
+#include <Arduino.h>
 #include <math.h>
 
 CapacitiveSensorV2::CapacitiveSensorV2(uint8_t sensorPin, uint16_t numSamples, uint16_t sampleDelay)
@@ -11,15 +12,26 @@ void CapacitiveSensorV2::begin() {
     // Настройка touch pin
     Serial.println("Capacitive sensor V2 initialized on pin " + String(pin));
 
+#ifdef ESP32
+    // Только для оригинального ESP32 с поддержкой touchRead
     // Выполняем первое считывание для инициализации
     touchRead(pin);
     delay(100);
+#else
+    // Для ESP32-C3 используем ADC вместо touch sensor
+    pinMode(pin, INPUT);
+    delay(100);
+#endif
 
     // Калибровка baseline для touch сенсора
     Serial.println("Calibrating touch sensor baseline...");
     uint32_t sum = 0;
     for (int i = 0; i < 50; i++) {
+#ifdef ESP32
         sum += touchRead(pin);
+#else
+        sum += analogRead(pin);
+#endif
         delay(10);
     }
     float baseline = sum / 50.0f;
@@ -34,7 +46,11 @@ uint16_t CapacitiveSensorV2::getRawValue() {
     uint16_t maxVal = 0;
 
     for (uint16_t i = 0; i < samples; i++) {
+#ifdef ESP32
         values[i] = touchRead(pin);
+#else
+        values[i] = analogRead(pin);
+#endif
         sum += values[i];
 
         if (values[i] < minVal) minVal = values[i];

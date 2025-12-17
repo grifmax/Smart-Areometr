@@ -7,6 +7,9 @@
 #include <ArduinoJson.h>
 #include "config.h"
 
+// Forward declaration
+void mqttCallback(char* topic, byte* payload, unsigned int length);
+
 /**
  * @brief Мост для публикации данных в MQTT broker
  *
@@ -17,6 +20,8 @@
  * Приоритет: P1 (High) - будет реализовано в v2.0.0
  */
 class MQTTBridge {
+    friend void mqttCallback(char* topic, byte* payload, unsigned int length);
+
 private:
     WiFiClient wifiClient;
     PubSubClient* mqttClient;

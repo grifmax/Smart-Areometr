@@ -1,4 +1,5 @@
 #include "CalibrationTables.h"
+#include <Arduino.h>
 #include <ArduinoJson.h>
 #include <algorithm>
 
