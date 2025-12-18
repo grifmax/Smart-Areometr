@@ -178,6 +178,14 @@ void WebServerManager::setupRoutes() {
         }
     });
 
+    server->on("/css/dilution-calculator.css", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (LittleFS.exists("/css/dilution-calculator.css")) {
+            request->send(LittleFS, "/css/dilution-calculator.css", "text/css");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
+    });
+
     // JavaScript файлы
     server->on("/js/app.js", HTTP_GET, [](AsyncWebServerRequest *request) {
         if (LittleFS.exists("/js/app.js")) {
@@ -230,6 +238,30 @@ void WebServerManager::setupRoutes() {
     server->on("/js/distillation.js", HTTP_GET, [](AsyncWebServerRequest *request) {
         if (LittleFS.exists("/js/distillation.js")) {
             request->send(LittleFS, "/js/distillation.js", "application/javascript");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
+    });
+
+    server->on("/js/theme.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (LittleFS.exists("/js/theme.js")) {
+            request->send(LittleFS, "/js/theme.js", "application/javascript");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
+    });
+
+    server->on("/js/dilution-calculator.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (LittleFS.exists("/js/dilution-calculator.js")) {
+            request->send(LittleFS, "/js/dilution-calculator.js", "application/javascript");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
+    });
+
+    server->on("/js/dilution-calculator-ui.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (LittleFS.exists("/js/dilution-calculator-ui.js")) {
+            request->send(LittleFS, "/js/dilution-calculator-ui.js", "application/javascript");
         } else {
             request->send(404, "text/plain", "File not found");
         }

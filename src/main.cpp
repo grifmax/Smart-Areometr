@@ -157,6 +157,62 @@ void setup() {
     webServer.setAlcoholCallback([]() { return currentAlcohol; });
     webServer.setTemperatureCallback([]() { return currentTemperature; });
     webServer.setCalibratedCallback([]() { return isCalibrated; });
+    webServer.setRawValueCallback([]() { return capacitiveSensor.readRaw(); });
+    webServer.setStabilityCallback([]() { return capacitiveSensor.getLastMeasurementStats().stability; });
+
+    // Callbacks для калибровки
+    webServer.setGetCalibrationDataCallback([]() {
+        return capacitiveSensor.exportCalibration();
+    });
+
+    webServer.setAddCalibrationPointCallback([](float alcoholPercent, float temperature) {
+        bool success = capacitiveSensor.addCalibrationPoint(alcoholPercent, temperature);
+        if (success) {
+            isCalibrated = capacitiveSensor.isCalibrated();
+            saveCalibrationData();
+        }
+        return success;
+    });
+
+    webServer.setClearCalibrationCallback([]() {
+        capacitiveSensor.clearCalibration();
+        isCalibrated = false;
+        saveCalibrationData();
+    });
+
+    // Для удаления точки нужно парсить JSON и пересоздавать калибровку
+    webServer.setDeleteCalibrationPointCallback([](uint8_t index) {
+        // Получаем текущую калибровку
+        String json = capacitiveSensor.exportCalibration();
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, json);
+        
+        if (error) {
+            return false;
+        }
+
+        JsonArray points = doc["points"].as<JsonArray>();
+        if (index >= points.size()) {
+            return false;
+        }
+
+        // Удаляем точку по индексу
+        points.remove(index);
+
+        // Очищаем калибровку и загружаем заново
+        capacitiveSensor.clearCalibration();
+        
+        // Добавляем все точки кроме удаленной
+        for (JsonObject point : points) {
+            float alcohol = point["alcohol"] | 0.0f;
+            float temp = point["temp"] | 20.0f;
+            capacitiveSensor.addCalibrationPoint(alcohol, temp);
+        }
+
+        isCalibrated = capacitiveSensor.isCalibrated();
+        saveCalibrationData();
+        return true;
+    });
 
     // Callbacks для фракций
     webServer.setGetFractionStatusCallback([]() {

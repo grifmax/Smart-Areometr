@@ -288,7 +288,8 @@ function initThemeManager() {
                 ThemeManager.createThemeOptionsInSettings(themeOptionsGrid);
             }
         } else {
-            console.log('ThemeManager: контейнер themeOptionsGrid не найден');
+            // Контейнер themeOptionsGrid есть только на странице настроек - это нормально
+            // console.log('ThemeManager: контейнер themeOptionsGrid не найден');
         }
     };
     

@@ -1,0 +1,278 @@
+/* === Стили для калькулятора разбавления спирта === */
+
+/* Вкладки режимов - стиль как у quick-buttons */
+.calc-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: calc(var(--spacing) * 1.5);
+    flex-wrap: wrap;
+}
+
+.tab-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--bg-color);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.tab-btn:hover {
+    background: var(--border-color);
+}
+
+.tab-btn.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+.tab-btn.active:hover {
+    background: var(--primary-dark);
+}
+
+/* Формы калькулятора */
+.calc-form {
+    display: none;
+}
+
+.calc-form.active {
+    display: block;
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Используем те же стили, что и form-grid из calibration.css */
+.calc-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing);
+    margin-bottom: calc(var(--spacing) * 1.5);
+}
+
+.calc-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.calc-form-group label {
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.calc-form-group input {
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+.calc-form-group input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.calc-form-group input.invalid {
+    border-color: var(--danger-color);
+}
+
+.calc-form-group small {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.calc-form-actions {
+    margin-top: var(--spacing);
+}
+
+/* Результаты расчета */
+.calc-results {
+    margin-top: calc(var(--spacing) * 1.5);
+    padding: calc(var(--spacing) * 1.5);
+    background: var(--bg-color);
+    border-radius: var(--radius);
+    border-left: 4px solid var(--primary-color);
+    display: none;
+}
+
+.calc-results.show {
+    display: block;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.calc-results-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: var(--spacing);
+}
+
+.calc-results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing);
+    margin-bottom: var(--spacing);
+}
+
+.calc-result-item {
+    padding: 12px;
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+}
+
+.calc-result-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.calc-result-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1.2;
+}
+
+.calc-result-unit {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-left: 4px;
+}
+
+.calc-result-highlight {
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-color) 100%);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.calc-result-highlight .calc-result-label {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.calc-result-highlight .calc-result-value {
+    color: white;
+}
+
+.calc-result-highlight .calc-result-unit {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Индикаторы контракции и поправок */
+.calc-details {
+    margin-top: var(--spacing);
+    padding-top: var(--spacing);
+    border-top: 1px solid var(--border-color);
+}
+
+.calc-detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    font-size: 0.875rem;
+}
+
+.calc-detail-label {
+    color: var(--text-secondary);
+}
+
+.calc-detail-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.calc-detail-value.positive {
+    color: var(--success-color);
+}
+
+.calc-detail-value.negative {
+    color: var(--warning-color);
+}
+
+/* Сообщения об ошибках */
+.calc-error {
+    margin-top: var(--spacing);
+    padding: 12px;
+    background: #FFEBEE;
+    border-left: 4px solid var(--danger-color);
+    border-radius: var(--radius);
+    color: var(--danger-color);
+    font-size: 0.875rem;
+    display: none;
+}
+
+.calc-error.show {
+    display: block;
+    animation: shake 0.5s ease-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+}
+
+/* Подсказки - используем те же стили, что и calibration-hint */
+.calc-hint {
+    margin-top: var(--spacing);
+    padding: var(--spacing);
+    background: #E3F2FD;
+    border-left: 4px solid var(--primary-color);
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.calc-hint strong {
+    color: var(--primary-color);
+}
+
+/* Стили для ошибок - как в calibration.css */
+.calc-error {
+    margin-top: var(--spacing);
+    padding: 12px;
+    background: #FFEBEE;
+    border-left: 4px solid var(--danger-color);
+    border-radius: var(--radius);
+    color: var(--danger-color);
+    font-size: 0.875rem;
+    display: none;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .calc-tabs {
+        flex-direction: column;
+    }
+
+    .tab-btn {
+        width: 100%;
+    }
+
+    .calc-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .calc-results-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Анимации */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
