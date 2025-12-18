@@ -229,6 +229,50 @@ style.textContent = `
         padding: var(--spacing);
     }
 
+    .form-group {
+        margin-bottom: var(--spacing);
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: var(--text-primary);
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group input[type="password"] {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        font-size: 1rem;
+        transition: border-color 0.3s;
+        background: var(--card-bg);
+        color: var(--text-primary);
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+
+    .form-group input[type="checkbox"] {
+        margin-right: 8px;
+    }
+
+    .form-group small {
+        display: block;
+        margin-top: 4px;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .form-actions {
+        margin-top: calc(var(--spacing) * 1.5);
+    }
+
     .status-row {
         display: flex;
         justify-content: space-between;
@@ -256,11 +300,46 @@ style.textContent = `
         margin-top: calc(var(--spacing) * 2);
     }
 
-    .form-grid-two {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: var(--spacing);
-        margin-bottom: calc(var(--spacing) * 1.5);
+    .collapsible-section {
+        margin-top: var(--spacing);
+    }
+
+    .collapsible-summary {
+        cursor: pointer;
+        padding: 12px;
+        background: var(--bg-color);
+        border-radius: var(--radius);
+        font-weight: 500;
+        color: var(--primary-color);
+        user-select: none;
+        transition: background-color 0.2s;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .collapsible-summary::before {
+        content: '▶';
+        display: inline-block;
+        transition: transform 0.2s;
+        font-size: 0.875rem;
+    }
+
+    .collapsible-section[open] .collapsible-summary::before {
+        transform: rotate(90deg);
+    }
+
+    .collapsible-summary:hover {
+        background: var(--primary-light);
+    }
+
+    .collapsible-summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .collapsible-section[open] .collapsible-summary {
+        margin-bottom: var(--spacing);
     }
 
     .topics-info h3 {
