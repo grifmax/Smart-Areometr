@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 // Версия прошивки
-#define FIRMWARE_VERSION "2.1.5"
+#define FIRMWARE_VERSION "2.1.6"
 
 // Пины подключения OLED дисплея (I2C)
 // Для модулей ESP32-C3 с встроенным OLED обычно используются GPIO5 и GPIO6
