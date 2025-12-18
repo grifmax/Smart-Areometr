@@ -92,6 +92,11 @@ public:
     void setEnabled(bool enabled);
 
     /**
+     * @brief Проверить, включен ли MQTT
+     */
+    bool isEnabled() const;
+
+    /**
      * @brief Установить ID клиента
      */
     void setClientId(const String &id);

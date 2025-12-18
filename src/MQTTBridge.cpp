@@ -76,6 +76,10 @@ void MQTTBridge::setEnabled(bool e) {
     }
 }
 
+bool MQTTBridge::isEnabled() const {
+    return enabled;
+}
+
 void MQTTBridge::setClientId(const String &id) {
     clientId = id;
 }

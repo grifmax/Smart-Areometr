@@ -298,6 +298,10 @@ String FractionDetector::getModeName(DetectionMode m) {
     }
 }
 
+float FractionDetector::getAlcoholRate() const {
+    return calculateAlcoholRate();
+}
+
 // === Private методы ===
 
 float FractionDetector::calculateAlcoholRate() {

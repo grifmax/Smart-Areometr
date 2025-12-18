@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 // Версия прошивки
-#define FIRMWARE_VERSION "2.1.1"
+#define FIRMWARE_VERSION "2.1.2"
 
 // Пины подключения OLED дисплея (I2C)
 // Для модулей ESP32-C3 с встроенным OLED обычно используются GPIO5 и GPIO6
@@ -20,7 +20,17 @@
 // Адрес I2C: обычно 0x3C, иногда 0x3D
 #define OLED_ADDR 0x3C
 
-// Пин емкостного датчика (используем touch pin ESP32-C3)
+// === ADS1115 Configuration (16-битный внешний АЦП) ===
+#define USE_ADS1115 true              // Включить поддержку ADS1115
+#define ADS1115_I2C_ADDRESS 0x48     // Адрес I2C (0x48 по умолчанию, можно 0x49, 0x4A, 0x4B)
+// Примечание: GAIN_FOUR будет определен после включения ADS1115Driver.h
+// Используем значение 2 для GAIN_FOUR (см. Adafruit_ADS1X15.h)
+#define ADS1115_GAIN_VALUE 2         // GAIN_FOUR = 2 (усиление 4×, диапазон ±1.024V)
+#define ADS1115_DATA_RATE 128        // Скорость выборки: 8, 16, 32, 64, 128, 250, 475, 860 SPS
+#define ADS1115_CHANNEL_0 0           // Канал для электрода 1 (AIN0)
+#define ADS1115_CHANNEL_1 1           // Канал для электрода 2 (AIN1)
+
+// Пин емкостного датчика (используется только если USE_ADS1115 = false)
 #define CAPACITIVE_SENSOR_PIN 2  // GPIO2 поддерживает touch
 
 // Пин температурного датчика DS18B20 (OneWire)

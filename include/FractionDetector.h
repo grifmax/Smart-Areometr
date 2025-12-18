@@ -203,6 +203,12 @@ public:
     static String getModeName(DetectionMode m);
 
     /**
+     * @brief Получить скорость изменения крепости
+     * @return Скорость в %/минуту
+     */
+    float getAlcoholRate() const;
+
+    /**
      * @brief Экспорт сессии в JSON
      */
     String exportSession() const;

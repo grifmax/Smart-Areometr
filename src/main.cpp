@@ -2,7 +2,7 @@
 #include "SerialCompat.h"
 #include "config.h"
 
-#include "CapacitiveSensor.h"
+#include "CapacitiveSensorV2.h"
 #include "TemperatureCompensation.h"
 #include "DisplayManager.h"
 #include "WebServer.h"
@@ -14,8 +14,17 @@
 #include <ArduinoJson.h>
 #include <Preferences.h>
 
+#ifdef USE_ADS1115
+#include "ADS1115Driver.h"
+#endif
+
 // Глобальные объекты
-CapacitiveSensor capacitiveSensor(CAPACITIVE_SENSOR_PIN, MEASUREMENT_SAMPLES, MEASUREMENT_DELAY);
+#ifdef USE_ADS1115
+ADS1115Driver ads1115Driver(ADS1115_I2C_ADDRESS);
+CapacitiveSensorV2 capacitiveSensor(CAPACITIVE_SENSOR_PIN, MEASUREMENT_SAMPLES, MEASUREMENT_DELAY);
+#else
+CapacitiveSensorV2 capacitiveSensor(CAPACITIVE_SENSOR_PIN, MEASUREMENT_SAMPLES, MEASUREMENT_DELAY);
+#endif
 TemperatureCompensation tempCompensation(TEMP_SENSOR_PIN);
 DisplayManager display;
 WebServerManager webServer;
@@ -69,7 +78,32 @@ void setup() {
     display.showBootScreen();
     delay(2000);
 
+#ifdef USE_ADS1115
+    // Инициализация ADS1115 (16-битный внешний АЦП)
+    Serial.println("Initializing ADS1115...");
+    if (ads1115Driver.begin()) {
+        Serial.println("ADS1115 initialized successfully");
+        // Установка параметров
+        // GAIN_FOUR определен в библиотеке Adafruit_ADS1X15
+        ads1115Driver.setGain(GAIN_FOUR);  // Усиление 4×, диапазон ±1.024V
+        ads1115Driver.setDataRate(ADS1115_DATA_RATE);
+        
+        // Тест подключения
+        if (ads1115Driver.testConnection()) {
+            Serial.println("ADS1115 connection test: PASSED");
+        } else {
+            Serial.println("WARNING: ADS1115 connection test failed");
+        }
+    } else {
+        Serial.println("WARNING: ADS1115 initialization failed, using internal ADC");
+    }
+#endif
+
     // Инициализация емкостного датчика
+#ifdef USE_ADS1115
+    // Передаем драйвер ADS1115 в capacitiveSensor
+    capacitiveSensor.setADS1115Driver(&ads1115Driver);
+#endif
     capacitiveSensor.begin();
 
     // Инициализация температурного датчика
@@ -108,7 +142,7 @@ void setup() {
     // Установка callbacks для MQTT
     mqttBridge.setAlcoholCallback([]() { return currentAlcohol; });
     mqttBridge.setTemperatureCallback([]() { return currentTemperature; });
-    mqttBridge.setStabilityCallback([]() { return 0; });  // TODO: добавить расчет стабильности
+    mqttBridge.setStabilityCallback([]() { return capacitiveSensor.getLastMeasurementStats().stability; });
     mqttBridge.setFractionCallback([]() { 
         return FractionDetector::getFractionName(fractionDetector.getCurrentFraction()); 
     });
@@ -129,7 +163,7 @@ void setup() {
         JsonDocument doc;
         doc["current_fraction"] = FractionDetector::getFractionName(fractionDetector.getCurrentFraction());
         doc["fraction_color"] = FractionDetector::getFractionColor(fractionDetector.getCurrentFraction());
-        doc["alcohol_rate"] = 0.0f;  // TODO: добавить расчет скорости
+        doc["alcohol_rate"] = fractionDetector.getAlcoholRate();
         doc["current_volume"] = fractionDetector.getCurrentVolume();
         doc["total_volume"] = fractionDetector.getTotalVolume();
         
@@ -185,7 +219,7 @@ void setup() {
     webServer.setGetMQTTStatusCallback([]() {
         JsonDocument doc;
         doc["connected"] = mqttBridge.isConnected();
-        doc["enabled"] = true;  // TODO: получить из настроек
+        doc["enabled"] = mqttBridge.isEnabled();
         String json;
         serializeJson(doc, json);
         return json;
@@ -353,25 +387,32 @@ void performMeasurement() {
 
     // Измерение температуры
     currentTemperature = tempCompensation.measureTemperature();
-
-    // Измерение процента алкоголя
-    float rawAlcohol = capacitiveSensor.measureAlcoholPercent();
-
-    // Температурная компенсация
-    currentAlcohol = tempCompensation.compensate(rawAlcohol);
+    
+    // Измеряем крепость с температурной компенсацией (CapacitiveSensorV2 включает температурную компенсацию)
+    float rawAlcohol = capacitiveSensor.measureAlcoholPercent(currentTemperature, true);
+    
+    // Если V2 вернул ошибку (датчик не откалиброван), показываем ошибку
+    if (rawAlcohol < 0) {
+        display.showError("Sensor error!");
+        Serial.println("ERROR: Failed to measure alcohol percent");
+        return;
+    }
+    
+    currentAlcohol = rawAlcohol;
 
     // Обновление детектора фракций
     Fraction currentFraction = fractionDetector.update(currentAlcohol, currentTemperature);
 
+    // Получаем стабильность сигнала
+    uint8_t stability = capacitiveSensor.getLastMeasurementStats().stability;
+
     // Логирование в сессию
     if (session.getState() == SessionState::RUNNING) {
-        uint8_t stability = 0;  // TODO: добавить расчет стабильности
         session.logMeasurement(currentAlcohol, currentTemperature, stability, currentFraction);
     }
 
     // Публикация в MQTT
     if (mqttBridge.isConnected()) {
-        uint8_t stability = 0;  // TODO: добавить расчет стабильности
         mqttBridge.publishMeasurement(currentAlcohol, currentTemperature, stability);
     }
 
@@ -430,6 +471,13 @@ void processCalibration() {
     }
     lastUpdate = millis();
 
+    // Измеряем температуру для калибровки
+    float temp = tempCompensation.measureTemperature();
+    if (temp < -50.0f || temp > 150.0f) {
+        // Если температура невалидна, используем эталонную
+        temp = TEMP_REFERENCE;
+    }
+
     uint16_t rawValue = capacitiveSensor.readRaw();
     display.showCalibration(calibrationStep, rawValue);
 
@@ -440,24 +488,32 @@ void processCalibration() {
         delay(50);  // Debounce
 
         if (calibrationStep == 0) {
-            // Калибровка воды
-            capacitiveSensor.calibrateWater();
-            calibrationStep = 1;
-            display.showMessage("Water calibrated!", 1500);
-            Serial.println("Water calibration complete");
+            // Калибровка воды (0% алкоголя)
+            if (capacitiveSensor.addCalibrationPoint(0.0f, temp)) {
+                calibrationStep = 1;
+                display.showMessage("Water calibrated!", 1500);
+                Serial.println("Water calibration complete at " + String(temp) + "°C");
+            } else {
+                display.showMessage("Calibration failed!", 1500);
+                Serial.println("Water calibration failed");
+            }
 
         } else if (calibrationStep == 1) {
-            // Калибровка спирта
-            capacitiveSensor.calibrateAlcohol();
-            calibrationMode = false;
-            calibrationStep = 0;
-            isCalibrated = true;
+            // Калибровка спирта (100% алкоголя)
+            if (capacitiveSensor.addCalibrationPoint(100.0f, temp)) {
+                calibrationMode = false;
+                calibrationStep = 0;
+                isCalibrated = capacitiveSensor.isCalibrated();
 
-            // Сохраняем калибровочные данные
-            saveCalibrationData();
+                // Сохраняем калибровочные данные
+                saveCalibrationData();
 
-            display.showMessage("Calibration done!", 2000);
-            Serial.println("Calibration complete!");
+                display.showMessage("Calibration done!", 2000);
+                Serial.println("Calibration complete at " + String(temp) + "°C");
+            } else {
+                display.showMessage("Calibration failed!", 1500);
+                Serial.println("Alcohol calibration failed");
+            }
         }
     } else if (buttonState == HIGH) {
         buttonPressed = false;
@@ -465,24 +521,60 @@ void processCalibration() {
 }
 
 void loadCalibrationData() {
-    // В реальном проекте здесь нужно загрузить данные из LittleFS
-    // Пока используем заглушку
     Serial.println("Loading calibration data...");
 
     if (LittleFS.begin(true)) {
         if (LittleFS.exists("/calibration.json")) {
             File file = LittleFS.open("/calibration.json", "r");
             if (file) {
-                JsonDocument doc;
-                DeserializationError error = deserializeJson(doc, file);
+                String json = file.readString();
                 file.close();
 
-                if (!error) {
-                    float water = doc["water"];
-                    float alcohol = doc["alcohol"];
-                    capacitiveSensor.setCalibration(water, alcohol);
-                    isCalibrated = true;
-                    Serial.println("Calibration loaded: Water=" + String(water) + ", Alcohol=" + String(alcohol));
+                // Пытаемся загрузить в новом формате (CapacitiveSensorV2)
+                if (capacitiveSensor.importCalibration(json)) {
+                    isCalibrated = capacitiveSensor.isCalibrated();
+                    Serial.println("Calibration loaded (V2 format)");
+                    return;
+                }
+
+                // Если не удалось, пробуем старый формат для обратной совместимости
+                JsonDocument doc;
+                DeserializationError error = deserializeJson(doc, json);
+                if (!error && doc.containsKey("water") && doc.containsKey("alcohol")) {
+                    // Конвертируем старый формат в новый
+                    float waterRaw = doc["water"];
+                    float alcoholRaw = doc["alcohol"];
+                    float temp = doc["temperature"] | 20.0f;
+                    
+                    // Создаем JSON в новом формате
+                    JsonDocument newDoc;
+                    JsonArray pointsArray = newDoc["points"].to<JsonArray>();
+                    
+                    // Точка для воды (0%)
+                    JsonObject waterPoint = pointsArray.add<JsonObject>();
+                    waterPoint["alcohol"] = 0.0f;
+                    waterPoint["raw"] = waterRaw;
+                    waterPoint["temp"] = temp;
+                    
+                    // Точка для спирта (100%)
+                    JsonObject alcoholPoint = pointsArray.add<JsonObject>();
+                    alcoholPoint["alcohol"] = 100.0f;
+                    alcoholPoint["raw"] = alcoholRaw;
+                    alcoholPoint["temp"] = temp;
+                    
+                    String newJson;
+                    serializeJson(newDoc, newJson);
+                    
+                    // Импортируем в новом формате
+                    if (capacitiveSensor.importCalibration(newJson)) {
+                        // Сохраняем в новом формате
+                        saveCalibrationData();
+                        
+                        isCalibrated = capacitiveSensor.isCalibrated();
+                        Serial.println("Calibration converted from old format: Water=" + String(waterRaw) + ", Alcohol=" + String(alcoholRaw));
+                    } else {
+                        Serial.println("Failed to convert old calibration format");
+                    }
                 }
             }
         }
@@ -492,16 +584,11 @@ void loadCalibrationData() {
 void saveCalibrationData() {
     Serial.println("Saving calibration data...");
 
-    float water, alcohol;
-    capacitiveSensor.getCalibration(water, alcohol);
-
     if (LittleFS.begin(true)) {
         File file = LittleFS.open("/calibration.json", "w");
         if (file) {
-            JsonDocument doc;
-            doc["water"] = water;
-            doc["alcohol"] = alcohol;
-            serializeJson(doc, file);
+            String json = capacitiveSensor.exportCalibration();
+            file.print(json);
             file.close();
             Serial.println("Calibration saved!");
         }
