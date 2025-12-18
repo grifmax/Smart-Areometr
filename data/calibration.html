@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Калибровка - Smart Areometr</title>
+    <script>
+        // Применяем тему ДО загрузки CSS, чтобы избежать мигания
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme !== 'light') {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/calibration.css">
 </head>
@@ -18,6 +27,9 @@
             <div class="nav-menu">
                 <a href="/" class="nav-link">Главная</a>
                 <a href="/calibration.html" class="nav-link active">Калибровка</a>
+                <a href="/fractions.html" class="nav-link">Фракции</a>
+                <a href="/distillation.html" class="nav-link">Сессии</a>
+                <a href="/mqtt.html" class="nav-link">MQTT</a>
                 <a href="/settings.html" class="nav-link">Настройки</a>
                 <a href="/logs.html" class="nav-link">Логи</a>
             </div>
@@ -208,6 +220,7 @@
         </footer>
     </div>
 
+    <script src="/js/theme.js"></script>
     <script src="/js/calibration.js"></script>
 </body>
 </html>

@@ -47,6 +47,21 @@ private:
     std::function<String()> getFractionModeCallback;                // -> режим работы
     std::function<bool(const String&)> setFractionModeCallback;     // (mode) -> success
 
+    // Callback функции для работы с MQTT
+    std::function<String()> getMQTTStatusCallback;                 // -> JSON со статусом MQTT
+    std::function<String()> getMQTTConfigCallback;                  // -> JSON с конфигурацией MQTT
+    std::function<bool(const String&)> setMQTTConfigCallback;        // (JSON) -> success
+    std::function<bool()> testMQTTCallback;                          // -> success (тест подключения)
+
+    // Callback функции для работы с сессиями перегонки
+    std::function<bool(const String&, float)> startSessionCallback;  // (name, mashVol) -> success
+    std::function<void()> stopSessionCallback;                       // Остановить сессию
+    std::function<void()> pauseSessionCallback;                      // Пауза/продолжить
+    std::function<String()> getSessionStatusCallback;                // -> JSON со статусом сессии
+    std::function<String()> exportSessionJSONCallback;              // -> JSON экспорт
+    std::function<String()> exportSessionCSVCallback;                // -> CSV экспорт
+    std::function<String()> getSessionsListCallback;                // -> JSON список сессий
+
     /**
      * @brief Настроить маршруты веб-сервера
      */
@@ -194,6 +209,61 @@ public:
      * @brief Установить callback для установки режима работы
      */
     void setSetFractionModeCallback(std::function<bool(const String&)> callback);
+
+    /**
+     * @brief Установить callback для получения статуса MQTT
+     */
+    void setGetMQTTStatusCallback(std::function<String()> callback);
+
+    /**
+     * @brief Установить callback для получения конфигурации MQTT
+     */
+    void setGetMQTTConfigCallback(std::function<String()> callback);
+
+    /**
+     * @brief Установить callback для установки конфигурации MQTT
+     */
+    void setSetMQTTConfigCallback(std::function<bool(const String&)> callback);
+
+    /**
+     * @brief Установить callback для теста подключения MQTT
+     */
+    void setTestMQTTCallback(std::function<bool()> callback);
+
+    /**
+     * @brief Установить callback для начала сессии перегонки
+     */
+    void setStartSessionCallback(std::function<bool(const String&, float)> callback);
+
+    /**
+     * @brief Установить callback для остановки сессии
+     */
+    void setStopSessionCallback(std::function<void()> callback);
+
+    /**
+     * @brief Установить callback для паузы сессии
+     */
+    void setPauseSessionCallback(std::function<void()> callback);
+
+    /**
+     * @brief Установить callback для получения статуса сессии
+     */
+    void setGetSessionStatusCallback(std::function<String()> callback);
+
+    /**
+     * @brief Установить callback для экспорта сессии в JSON
+     */
+    void setExportSessionJSONCallback(std::function<String()> callback);
+
+    /**
+     * @brief Установить callback для экспорта сессии в CSV
+     */
+    void setExportSessionCSVCallback(std::function<String()> callback);
+
+    /**
+     * @brief Установить callback для получения списка сессий
+     */
+    void setGetSessionsListCallback(std::function<String()> callback);
 
     /**
      * @brief Обработка OTA и веб-сервера (вызывать в loop)

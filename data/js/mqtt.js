@@ -169,22 +169,10 @@ async function testConnection() {
 async function reconnect() {
     showNotification('Переподключение к MQTT broker...', 'info');
 
-    try {
-        const response = await fetch(`${API_BASE}/api/mqtt/reconnect`, {
-            method: 'POST'
-        });
-
-        if (!response.ok) throw new Error('Reconnect failed');
-
-        showNotification('Команда переподключения отправлена', 'success');
-
-        // Обновляем статус через 3 секунды
-        setTimeout(updateMQTTStatus, 3000);
-
-    } catch (error) {
-        console.error('Error reconnecting:', error);
-        showNotification('Ошибка переподключения', 'error');
-    }
+    // Переподключение происходит автоматически через handle()
+    // Просто обновляем статус
+    setTimeout(updateMQTTStatus, 3000);
+    showNotification('Проверка подключения...', 'info');
 }
 
 // === Мониторинг статуса ===

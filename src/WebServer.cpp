@@ -2,6 +2,7 @@
 #include "config.h"
 #include "SerialCompat.h"
 #include <LittleFS.h>
+#include <Preferences.h>
 
 WebServerManager::WebServerManager(uint16_t port)
     : apMode(false), deviceIP("") {
@@ -144,6 +145,14 @@ void WebServerManager::setupRoutes() {
         }
     });
 
+    server->on("/distillation.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (LittleFS.exists("/distillation.html")) {
+            request->send(LittleFS, "/distillation.html", "text/html");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
+    });
+
     // CSS файлы
     server->on("/css/style.css", HTTP_GET, [](AsyncWebServerRequest *request) {
         if (LittleFS.exists("/css/style.css")) {
@@ -218,6 +227,14 @@ void WebServerManager::setupRoutes() {
         }
     });
 
+    server->on("/js/distillation.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (LittleFS.exists("/js/distillation.js")) {
+            request->send(LittleFS, "/js/distillation.js", "application/javascript");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
+    });
+
     // Стандартные запросы браузера
     server->on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request) {
         request->send(204);  // No Content
@@ -239,12 +256,47 @@ void WebServerManager::setupRoutes() {
 
     // API: Получить статус
     server->on("/api/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
-        StaticJsonDocument<256> doc;
+        JsonDocument doc;
         doc["firmware"] = FIRMWARE_VERSION;
         doc["wifi_mode"] = apMode ? "AP" : "Client";
         doc["ssid"] = ssid;
         doc["ip"] = deviceIP;
         doc["calibrated"] = calibratedCallback ? calibratedCallback() : false;
+
+        String response;
+        if (serializeJson(doc, response) > 0) {
+            request->send(200, "application/json", response);
+        } else {
+            request->send(500, "application/json", "{\"error\":\"serialization_failed\"}");
+        }
+    });
+
+    // API: Получить системную информацию
+    server->on("/api/system/info", HTTP_GET, [](AsyncWebServerRequest *request) {
+        JsonDocument doc;
+        
+        // Свободная память (heap)
+        uint32_t freeHeap = ESP.getFreeHeap();
+        doc["free_heap"] = freeHeap / 1024;  // В KB
+        
+        // Uptime в секундах
+        unsigned long uptimeSeconds = millis() / 1000;
+        doc["uptime"] = uptimeSeconds;
+        
+        // Информация о файловой системе
+        if (LittleFS.begin(false)) {
+            size_t totalBytes = LittleFS.totalBytes();
+            size_t usedBytes = LittleFS.usedBytes();
+            size_t freeBytes = totalBytes - usedBytes;
+            
+            doc["fs_total"] = totalBytes / 1024;  // В KB
+            doc["fs_used"] = usedBytes / 1024;     // В KB
+            doc["fs_free"] = freeBytes / 1024;     // В KB
+        } else {
+            doc["fs_total"] = 0;
+            doc["fs_used"] = 0;
+            doc["fs_free"] = 0;
+        }
 
         String response;
         if (serializeJson(doc, response) > 0) {
@@ -453,6 +505,341 @@ void WebServerManager::setupRoutes() {
         }
     );
 
+    // === MQTT API ===
+    server->on("/api/mqtt/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getMQTTStatusCallback) {
+            String json = getMQTTStatusCallback();
+            request->send(200, "application/json", json);
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+        }
+    });
+
+    server->on("/api/mqtt/config", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getMQTTConfigCallback) {
+            String json = getMQTTConfigCallback();
+            request->send(200, "application/json", json);
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+        }
+    });
+
+    server->on("/api/mqtt/config", HTTP_POST,
+        [](AsyncWebServerRequest *request) {},
+        nullptr,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (total > 1024) {
+                request->send(413, "application/json", "{\"error\":\"payload_too_large\"}");
+                return;
+            }
+            
+            if (setMQTTConfigCallback && len > 0) {
+                String body = String((char*)data).substring(0, len);
+                bool success = setMQTTConfigCallback(body);
+                if (success) {
+                    request->send(200, "application/json", "{\"status\":\"success\"}");
+                } else {
+                    request->send(400, "application/json", "{\"error\":\"invalid_config\"}");
+                }
+            } else {
+                request->send(400, "application/json", "{\"error\":\"no_body\"}");
+            }
+        }
+    );
+
+    server->on("/api/mqtt/test", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (testMQTTCallback) {
+            bool success = testMQTTCallback();
+            if (success) {
+                request->send(200, "application/json", "{\"status\":\"success\",\"connected\":true}");
+            } else {
+                request->send(200, "application/json", "{\"status\":\"failed\",\"connected\":false}");
+            }
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+        }
+    });
+
+    // === Session API ===
+    server->on("/api/session/start", HTTP_POST,
+        [](AsyncWebServerRequest *request) {},
+        nullptr,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (total > 512) {
+                request->send(413, "application/json", "{\"error\":\"payload_too_large\"}");
+                return;
+            }
+            
+            if (startSessionCallback && len > 0) {
+                JsonDocument doc;
+                DeserializationError error = deserializeJson(doc, (const char*)data, len);
+                
+                if (error) {
+                    request->send(400, "application/json", "{\"error\":\"invalid_json\"}");
+                    return;
+                }
+                
+                String name = doc["name"] | "Session";
+                float mashVol = doc["mash_volume"] | 0.0f;
+                
+                bool success = startSessionCallback(name, mashVol);
+                if (success) {
+                    request->send(200, "application/json", "{\"status\":\"success\"}");
+                } else {
+                    request->send(400, "application/json", "{\"error\":\"failed_to_start\"}");
+                }
+            } else {
+                request->send(400, "application/json", "{\"error\":\"no_body\"}");
+            }
+        }
+    );
+
+    server->on("/api/session/stop", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (stopSessionCallback) {
+            stopSessionCallback();
+            request->send(200, "application/json", "{\"status\":\"success\"}");
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+        }
+    });
+
+    server->on("/api/session/pause", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (pauseSessionCallback) {
+            pauseSessionCallback();
+            request->send(200, "application/json", "{\"status\":\"success\"}");
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+        }
+    });
+
+    server->on("/api/session/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getSessionStatusCallback) {
+            String json = getSessionStatusCallback();
+            request->send(200, "application/json", json);
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+        }
+    });
+
+    server->on("/api/session/export/json", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (exportSessionJSONCallback) {
+            String json = exportSessionJSONCallback();
+            request->send(200, "application/json", json);
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+        }
+    });
+
+    server->on("/api/session/export/csv", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (exportSessionCSVCallback) {
+            String csv = exportSessionCSVCallback();
+            request->send(200, "text/csv", csv);
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+        }
+    });
+
+    server->on("/api/session/list", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getSessionsListCallback) {
+            String json = getSessionsListCallback();
+            request->send(200, "application/json", json);
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+        }
+    });
+
+    // === WiFi API ===
+    // API: Сканирование WiFi сетей
+    server->on("/api/wifi/scan", HTTP_GET, [](AsyncWebServerRequest *request) {
+        Serial.println("Starting WiFi scan...");
+        
+        // Переключаемся в режим STA для сканирования (если не в AP режиме)
+        WiFiMode_t currentMode = WiFi.getMode();
+        if (currentMode == WIFI_AP || currentMode == WIFI_AP_STA) {
+            WiFi.mode(WIFI_AP_STA);  // AP+STA для сканирования
+        } else {
+            WiFi.mode(WIFI_STA);
+        }
+        
+        // Запускаем сканирование (блокирующее)
+        int n = WiFi.scanNetworks();
+        
+        JsonDocument doc;
+        JsonArray networks = doc["networks"].to<JsonArray>();
+        
+        if (n > 0) {
+            for (int i = 0; i < n; i++) {
+                JsonObject network = networks.add<JsonObject>();
+                network["ssid"] = WiFi.SSID(i);
+                network["rssi"] = WiFi.RSSI(i);
+                network["encryption"] = (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? "open" : "encrypted";
+                network["channel"] = WiFi.channel(i);
+            }
+        } else if (n == 0) {
+            doc["error"] = "no_networks";
+        } else {
+            doc["error"] = "scan_failed";
+        }
+        
+        // Восстанавливаем режим
+        if (currentMode == WIFI_AP) {
+            WiFi.mode(WIFI_AP);
+        }
+        
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+        Serial.println("WiFi scan completed: " + String(n) + " networks found");
+    });
+
+    // API: Сохранение WiFi конфигурации
+    server->on("/api/wifi/config", HTTP_POST,
+        [](AsyncWebServerRequest *request) {},
+        nullptr,
+        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (total > 512) {
+                request->send(413, "application/json", "{\"error\":\"payload_too_large\"}");
+                return;
+            }
+            
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, (const char*)data, len);
+            
+            if (error || len == 0) {
+                request->send(400, "application/json", "{\"error\":\"invalid_json\"}");
+                return;
+            }
+            
+            String ssid = doc["ssid"] | "";
+            String password = doc["password"] | "";
+            
+            if (ssid.length() == 0) {
+                request->send(400, "application/json", "{\"error\":\"ssid_required\"}");
+                return;
+            }
+            
+            // Сохраняем настройки в Preferences
+            Preferences preferences;
+            preferences.begin("wifi", false);
+            preferences.putString("ssid", ssid);
+            preferences.putString("password", password);
+            preferences.end();
+            
+            request->send(200, "application/json", "{\"status\":\"success\",\"message\":\"WiFi settings saved. Device will reboot.\"}");
+            Serial.println("WiFi config saved: SSID=" + ssid);
+            
+            // Перезагрузка через 1 секунду (после отправки ответа)
+            delay(1000);
+            ESP.restart();
+        }
+    );
+
+    // API: Сохранение параметров измерения
+    server->on("/api/settings/measurement", HTTP_POST,
+        [](AsyncWebServerRequest *request) {},
+        nullptr,
+        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (total > 512) {
+                request->send(413, "application/json", "{\"error\":\"payload_too_large\"}");
+                return;
+            }
+            
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, (const char*)data, len);
+            
+            if (error || len == 0) {
+                request->send(400, "application/json", "{\"error\":\"invalid_json\"}");
+                return;
+            }
+            
+            int samples = doc["samples"] | 100;
+            int delay = doc["delay"] | 10;
+            int interval = doc["interval"] | 5;
+            
+            // Сохраняем настройки в Preferences
+            Preferences preferences;
+            preferences.begin("measure", false);
+            preferences.putInt("samples", samples);
+            preferences.putInt("delay", delay);
+            preferences.putInt("interval", interval);
+            preferences.end();
+            
+            request->send(200, "application/json", "{\"status\":\"success\"}");
+            Serial.println("Measurement settings saved: samples=" + String(samples) + ", delay=" + String(delay) + ", interval=" + String(interval));
+        }
+    );
+
+    // API: Получение параметров измерения
+    server->on("/api/settings/measurement", HTTP_GET, [](AsyncWebServerRequest *request) {
+        Preferences preferences;
+        preferences.begin("measure", true);
+        
+        int samples = preferences.getInt("samples", 100);
+        int delay = preferences.getInt("delay", 10);
+        int interval = preferences.getInt("interval", 5);
+        preferences.end();
+        
+        JsonDocument doc;
+        doc["samples"] = samples;
+        doc["delay"] = delay;
+        doc["interval"] = interval;
+        
+        String json;
+        serializeJson(doc, json);
+        request->send(200, "application/json", json);
+    });
+
+    // API: Сохранение настроек температурной компенсации
+    server->on("/api/settings/temperature", HTTP_POST,
+        [](AsyncWebServerRequest *request) {},
+        nullptr,
+        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (total > 512) {
+                request->send(413, "application/json", "{\"error\":\"payload_too_large\"}");
+                return;
+            }
+            
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, (const char*)data, len);
+            
+            if (error || len == 0) {
+                request->send(400, "application/json", "{\"error\":\"invalid_json\"}");
+                return;
+            }
+            
+            float tempReference = doc["temperature_reference"] | 20.0f;
+            float tempCoefficient = doc["temperature_coefficient"] | 0.4f;
+            
+            // Сохраняем настройки в Preferences
+            Preferences preferences;
+            preferences.begin("temp", false);
+            preferences.putFloat("reference", tempReference);
+            preferences.putFloat("coefficient", tempCoefficient);
+            preferences.end();
+            
+            request->send(200, "application/json", "{\"status\":\"success\"}");
+            Serial.println("Temperature settings saved: reference=" + String(tempReference) + ", coefficient=" + String(tempCoefficient));
+        }
+    );
+
+    // API: Получение настроек температурной компенсации
+    server->on("/api/settings/temperature", HTTP_GET, [](AsyncWebServerRequest *request) {
+        Preferences preferences;
+        preferences.begin("temp", true);
+        
+        float tempReference = preferences.getFloat("reference", 20.0f);
+        float tempCoefficient = preferences.getFloat("coefficient", 0.4f);
+        preferences.end();
+        
+        JsonDocument doc;
+        doc["temperature_reference"] = tempReference;
+        doc["temperature_coefficient"] = tempCoefficient;
+        
+        String json;
+        serializeJson(doc, json);
+        request->send(200, "application/json", json);
+    });
+
     // 404 handler
     server->onNotFound([](AsyncWebServerRequest *request) {
         request->send(404, "text/plain", "Not Found");
@@ -492,7 +879,7 @@ void WebServerManager::setupOTA() {
 }
 
 String WebServerManager::generateMeasurementJSON() {
-    StaticJsonDocument<256> doc;
+    JsonDocument doc;
 
     doc["alcohol"] = alcoholCallback ? alcoholCallback() : 0.0f;
     doc["temperature"] = temperatureCallback ? temperatureCallback() : 0.0f;
@@ -500,6 +887,23 @@ String WebServerManager::generateMeasurementJSON() {
     doc["raw_value"] = rawValueCallback ? rawValueCallback() : 0;
     doc["stability"] = stabilityCallback ? stabilityCallback() : 0;
     doc["timestamp"] = millis();
+
+    // Добавляем данные о фракциях, если доступны
+    if (getFractionStatusCallback) {
+        String fractionStatus = getFractionStatusCallback();
+        JsonDocument fracDoc;
+        if (deserializeJson(fracDoc, fractionStatus) == DeserializationError::Ok) {
+            if (fracDoc["current_fraction"].is<String>()) {
+                doc["fraction"] = fracDoc["current_fraction"].as<String>();
+            }
+            if (fracDoc["fraction_color"].is<String>()) {
+                doc["fraction_color"] = fracDoc["fraction_color"].as<String>();
+            }
+            if (fracDoc["alcohol_rate"].is<float>()) {
+                doc["alcohol_rate"] = fracDoc["alcohol_rate"].as<float>();
+            }
+        }
+    }
 
     String response;
     serializeJson(doc, response);
@@ -584,6 +988,50 @@ void WebServerManager::setGetFractionModeCallback(std::function<String()> callba
 
 void WebServerManager::setSetFractionModeCallback(std::function<bool(const String&)> callback) {
     setFractionModeCallback = callback;
+}
+
+void WebServerManager::setGetMQTTStatusCallback(std::function<String()> callback) {
+    getMQTTStatusCallback = callback;
+}
+
+void WebServerManager::setGetMQTTConfigCallback(std::function<String()> callback) {
+    getMQTTConfigCallback = callback;
+}
+
+void WebServerManager::setSetMQTTConfigCallback(std::function<bool(const String&)> callback) {
+    setMQTTConfigCallback = callback;
+}
+
+void WebServerManager::setTestMQTTCallback(std::function<bool()> callback) {
+    testMQTTCallback = callback;
+}
+
+void WebServerManager::setStartSessionCallback(std::function<bool(const String&, float)> callback) {
+    startSessionCallback = callback;
+}
+
+void WebServerManager::setStopSessionCallback(std::function<void()> callback) {
+    stopSessionCallback = callback;
+}
+
+void WebServerManager::setPauseSessionCallback(std::function<void()> callback) {
+    pauseSessionCallback = callback;
+}
+
+void WebServerManager::setGetSessionStatusCallback(std::function<String()> callback) {
+    getSessionStatusCallback = callback;
+}
+
+void WebServerManager::setExportSessionJSONCallback(std::function<String()> callback) {
+    exportSessionJSONCallback = callback;
+}
+
+void WebServerManager::setExportSessionCSVCallback(std::function<String()> callback) {
+    exportSessionCSVCallback = callback;
+}
+
+void WebServerManager::setGetSessionsListCallback(std::function<String()> callback) {
+    getSessionsListCallback = callback;
 }
 
 void WebServerManager::handle() {

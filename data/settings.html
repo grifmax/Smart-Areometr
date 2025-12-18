@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Настройки - Smart Areometr</title>
+    <script>
+        // Применяем тему ДО загрузки CSS, чтобы избежать мигания
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme !== 'light') {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -17,6 +26,9 @@
             <div class="nav-menu">
                 <a href="/" class="nav-link">Главная</a>
                 <a href="/calibration.html" class="nav-link">Калибровка</a>
+                <a href="/fractions.html" class="nav-link">Фракции</a>
+                <a href="/distillation.html" class="nav-link">Сессии</a>
+                <a href="/mqtt.html" class="nav-link">MQTT</a>
                 <a href="/settings.html" class="nav-link active">Настройки</a>
                 <a href="/logs.html" class="nav-link">Логи</a>
             </div>
@@ -24,6 +36,50 @@
 
         <!-- Основной контент -->
         <main class="main-content">
+            <!-- Настройки темы -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>🎨 Тема оформления</h2>
+                </div>
+                <div class="card-body">
+                    <div class="theme-settings">
+                        <p>Выберите тему оформления интерфейса:</p>
+                        <div class="theme-options-grid" id="themeOptionsGrid">
+                            <button class="theme-option-card" data-theme-key="light" onclick="applyThemeClick('light', event)">
+                                <div class="theme-option-card-icon">☀️</div>
+                                <div class="theme-option-card-name">Светлая</div>
+                                <div class="theme-option-card-check">✓</div>
+                            </button>
+                            <button class="theme-option-card" data-theme-key="dark" onclick="applyThemeClick('dark', event)">
+                                <div class="theme-option-card-icon">🌙</div>
+                                <div class="theme-option-card-name">Темная</div>
+                                <div class="theme-option-card-check">✓</div>
+                            </button>
+                            <button class="theme-option-card" data-theme-key="blue" onclick="applyThemeClick('blue', event)">
+                                <div class="theme-option-card-icon">💙</div>
+                                <div class="theme-option-card-name">Голубая</div>
+                                <div class="theme-option-card-check">✓</div>
+                            </button>
+                            <button class="theme-option-card" data-theme-key="purple" onclick="applyThemeClick('purple', event)">
+                                <div class="theme-option-card-icon">💜</div>
+                                <div class="theme-option-card-name">Пурпурная</div>
+                                <div class="theme-option-card-check">✓</div>
+                            </button>
+                            <button class="theme-option-card" data-theme-key="cyberpunk" onclick="applyThemeClick('cyberpunk', event)">
+                                <div class="theme-option-card-icon">🤖</div>
+                                <div class="theme-option-card-name">Киберпанк</div>
+                                <div class="theme-option-card-check">✓</div>
+                            </button>
+                            <button class="theme-option-card" data-theme-key="orange" onclick="applyThemeClick('orange', event)">
+                                <div class="theme-option-card-icon">🧡</div>
+                                <div class="theme-option-card-name">Оранжевая</div>
+                                <div class="theme-option-card-check">✓</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Wi-Fi настройки -->
             <div class="card">
                 <div class="card-header">
@@ -33,11 +89,26 @@
                     <form id="wifiForm" onsubmit="saveWifiSettings(event)">
                         <div class="form-group">
                             <label for="ssid">SSID сети:</label>
-                            <input type="text" id="ssid" name="ssid" required>
+                            <div class="input-with-button">
+                                <input type="text" id="ssid" name="ssid" required>
+                                <button type="button" class="btn btn-secondary btn-scan" onclick="scanWiFi()" id="scanBtn">
+                                    <span class="btn-icon">🔍</span>
+                                    <span class="btn-text">Сканировать</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group" id="wifiListGroup" style="display: none;">
+                            <label>Доступные сети:</label>
+                            <div id="wifiList" class="wifi-list"></div>
                         </div>
                         <div class="form-group">
                             <label for="password">Пароль:</label>
-                            <input type="password" id="password" name="password">
+                            <div class="password-input-wrapper">
+                                <input type="password" id="password" name="password">
+                                <button type="button" class="password-toggle" onclick="togglePasswordVisibility()" id="passwordToggle">
+                                    <span class="eye-icon">👁️</span>
+                                </button>
+                            </div>
                             <small>Оставьте пустым для открытой сети</small>
                         </div>
                         <div class="form-actions">
@@ -195,6 +266,7 @@
         </footer>
     </div>
 
+    <script src="/js/theme.js"></script>
     <script src="/js/settings.js"></script>
 </body>
 </html>

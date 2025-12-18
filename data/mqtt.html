@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MQTT Настройки - Smart Areometr</title>
+    <script>
+        // Применяем тему ДО загрузки CSS, чтобы избежать мигания
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme !== 'light') {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -229,6 +238,7 @@ Server: 192.168.1.100:1883</code></pre>
         </footer>
     </div>
 
+    <script src="/js/theme.js"></script>
     <script src="/js/mqtt.js"></script>
 </body>
 </html>

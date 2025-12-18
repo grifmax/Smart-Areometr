@@ -322,21 +322,40 @@ void DisplayManager::showNetworkInfo(const String &ssid, const String &ip, bool 
     }
     display->println(ssidShort);
     
-    // Вторая строка: IP адрес (обрезаем до 12 символов)
+    // Вторая строка: IP адрес (если длиннее 12 символов, переносим последние 3)
     display->setCursor(xOffset + 0, yOffset + 10);
-    String ipShort = ip;
-    if (ipShort.length() > 12) {
-        ipShort = ipShort.substring(0, 12);
+    if (ip.length() > 12) {
+        // Показываем первые символы (без последних 3)
+        String ipFirst = ip.substring(0, ip.length() - 3);
+        if (ipFirst.length() > 12) {
+            ipFirst = ipFirst.substring(0, 12);
+        }
+        display->println(ipFirst);
+        
+        // Третья строка: последние 3 символа IP адреса
+        display->setCursor(xOffset + 0, yOffset + 20);
+        String ipLast = ip.substring(ip.length() - 3);
+        display->println(ipLast);
+        
+        // Четвертая строка: Статус
+        display->setCursor(xOffset + 0, yOffset + 30);
+        String status = connected ? "Connected" : "AP Mode";
+        if (status.length() > 12) {
+            status = status.substring(0, 12);
+        }
+        display->println(status);
+    } else {
+        // IP адрес помещается на одну строку
+        display->println(ip);
+        
+        // Третья строка: Статус
+        display->setCursor(xOffset + 0, yOffset + 20);
+        String status = connected ? "Connected" : "AP Mode";
+        if (status.length() > 12) {
+            status = status.substring(0, 12);
+        }
+        display->println(status);
     }
-    display->println(ipShort);
-    
-    // Третья строка: Статус
-    display->setCursor(xOffset + 0, yOffset + 20);
-    String status = connected ? "Connected" : "AP Mode";
-    if (status.length() > 12) {
-        status = status.substring(0, 12);
-    }
-    display->println(status);
 
     display->display();
 }

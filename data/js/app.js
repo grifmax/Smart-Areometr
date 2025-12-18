@@ -13,6 +13,10 @@ let chartData = {
     temperature: []
 };
 
+// Делаем графики доступными глобально для обновления темы
+window.alcoholChart = null;
+window.temperatureChart = null;
+
 // === Инициализация ===
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Smart Areometr Web Interface initialized');
@@ -77,6 +81,9 @@ function initCharts() {
             }
         }
     });
+    
+    // Сохраняем глобально для обновления темы
+    window.alcoholChart = alcoholChart;
 
     // График температуры
     temperatureChart = new Chart(temperatureCtx, {
@@ -124,6 +131,9 @@ function initCharts() {
             }
         }
     });
+    
+    // Сохраняем глобально для обновления темы
+    window.temperatureChart = temperatureChart;
 }
 
 // === Загрузка данных измерений ===
@@ -162,6 +172,43 @@ function updateMeasurementDisplay(data) {
     if (calibrationStatus) {
         calibrationStatus.textContent = data.calibrated ? 'OK' : 'Не откалиброван';
         calibrationStatus.style.color = data.calibrated ? '#4CAF50' : '#F44336';
+    }
+
+    // Фракция
+    const fractionItem = document.getElementById('fractionItem');
+    const fractionValue = document.getElementById('fractionValue');
+    const fractionIcon = document.getElementById('fractionIcon');
+    
+    if (data.fraction) {
+        if (fractionItem) fractionItem.style.display = 'flex';
+        
+        const fractionInfo = {
+            'unknown': { name: 'Ожидание', icon: '🧪', color: '#9E9E9E' },
+            'foreshots': { name: 'Первач', icon: '🔴', color: '#D32F2F' },
+            'heads': { name: 'Головы', icon: '🟠', color: '#F57C00' },
+            'body': { name: 'Тело', icon: '🟢', color: '#4CAF50' },
+            'tails': { name: 'Хвосты', icon: '🟡', color: '#FBC02D' },
+            'finished': { name: 'Завершено', icon: '⚫', color: '#757575' }
+        };
+        
+        const info = fractionInfo[data.fraction] || fractionInfo['unknown'];
+        if (fractionValue) {
+            fractionValue.textContent = info.name;
+            fractionValue.style.color = info.color;
+        }
+        if (fractionIcon) fractionIcon.textContent = info.icon;
+        
+        // Показываем скорость изменения если есть
+        if (data.alcohol_rate !== undefined && data.alcohol_rate !== null) {
+            const rateText = data.alcohol_rate >= 0 ? 
+                `+${data.alcohol_rate.toFixed(2)}` : 
+                data.alcohol_rate.toFixed(2);
+            if (fractionValue) {
+                fractionValue.textContent = `${info.name} (${rateText} %/мин)`;
+            }
+        }
+    } else {
+        if (fractionItem) fractionItem.style.display = 'none';
     }
 
     // Время обновления
