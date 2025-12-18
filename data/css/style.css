@@ -735,3 +735,138 @@ body {
     margin-bottom: var(--spacing);
     color: var(--text-secondary);
 }
+
+/* === Стили для приемников (receivers.html) === */
+.receivers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing);
+    margin-top: var(--spacing);
+}
+
+.receiver-card {
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: var(--spacing);
+    transition: all 0.3s ease;
+}
+
+.receiver-card.active {
+    border-color: var(--primary-color);
+    background: var(--primary-light);
+    box-shadow: var(--shadow-hover);
+}
+
+.receiver-card.overflowing {
+    border-color: var(--danger-color);
+    background: rgba(244, 67, 54, 0.1);
+}
+
+.receiver-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: calc(var(--spacing) * 0.5);
+}
+
+.receiver-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.receiver-body {
+    margin-top: var(--spacing);
+}
+
+.receiver-info {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 0.5);
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.info-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.info-value {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: calc(var(--spacing) * 0.5);
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--primary-color);
+    transition: width 0.3s ease;
+}
+
+.receiver-card.overflowing .progress-fill {
+    background: var(--danger-color);
+}
+
+.level-detector-status {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 0.75);
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: calc(var(--spacing) * 0.5);
+    background: var(--bg-color);
+    border-radius: var(--radius);
+}
+
+.status-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.status-value {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+#levelChart {
+    max-height: 300px;
+    margin-top: var(--spacing);
+}
+
+.button-group {
+    display: flex;
+    gap: var(--spacing);
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .receivers-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .button-group {
+        flex-direction: column;
+    }
+    
+    .button-group .btn {
+        width: 100%;
+    }
+}

@@ -42,6 +42,9 @@ private:
     String topicTemperature;
     String topicFraction;
     String topicStability;
+    String topicBatteryVoltage;
+    String topicBatteryPercent;
+    String topicBatteryStatus;
 
     // Callbacks для получения данных
     std::function<float()> alcoholCallback;
@@ -160,6 +163,14 @@ public:
      * @brief Установить callback для получения фракции
      */
     void setFractionCallback(std::function<String()> callback);
+
+    /**
+     * @brief Публикация статуса батареи
+     * @param voltage Напряжение батареи (В)
+     * @param percent Процент заряда (0-100)
+     * @param charging Статус зарядки
+     */
+    void publishBatteryStatus(float voltage, uint8_t percent, bool charging);
 };
 
 #endif // MQTT_BRIDGE_H

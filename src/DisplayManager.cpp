@@ -4,10 +4,14 @@
 #include "config.h"
 
 DisplayManager::DisplayManager(uint8_t w, uint8_t h, uint8_t addr)
-    : width(w), height(h), currentMode(MODE_MEASUREMENT) {
+    : width(w), height(h), currentMode(MODE_MEASUREMENT), cycleIndex(0), lastCycleTime(0), lastDisplayUpdate(0), lastDisplayedCycleIndex(255) {
     // Для дисплея 72x40 используем конструктор с явным указанием размера
     // -1 означает отсутствие reset пина (используется программный reset)
     display = new Adafruit_SSD1306(width, height, &Wire, -1);
+    savedAlcohol = 0.0f;
+    savedTemperature = 20.0f;
+    savedBatteryPercent = -1;
+    lastDisplayedText = "";
 }
 
 DisplayManager::~DisplayManager() {
@@ -172,36 +176,6 @@ bool DisplayManager::begin() {
     display->setTextColor(SSD1306_WHITE);
     display->setTextSize(1);
     display->display();
-    delay(100);
-    
-    // Для дисплея 72x40 используем offset
-    int xOffset = OLED_OFFSET_X;
-    int yOffset = OLED_OFFSET_Y;
-    
-    // Тестовая заливка для проверки работы дисплея (только физическая область 72x40)
-    display->fillRect(xOffset, yOffset, OLED_PHYSICAL_WIDTH, OLED_PHYSICAL_HEIGHT, SSD1306_WHITE);
-    display->display();
-    delay(500);
-    display->clearDisplay();
-    display->display();
-    delay(100);
-    
-    // Тест отображения текста в физической области дисплея
-    display->setTextSize(1);
-    // Максимум 12 символов на строку для 72px (72/6=12)
-    display->setCursor(xOffset + 0, yOffset + 0);
-    display->println("0123456789AB");  // 12 символов
-    
-    display->setCursor(xOffset + 0, yOffset + 10);
-    display->println("Test 72x40");
-    
-    display->setCursor(xOffset + 0, yOffset + 20);
-    display->print("W=72 H=40");
-    
-    display->display();
-    delay(2000);
-    display->clearDisplay();
-    display->display();
 
     return true;
 }
@@ -219,54 +193,156 @@ void DisplayManager::showBootScreen() {
     int yOffset = OLED_OFFSET_Y;
     
     display->setTextSize(1);
-    display->setCursor(xOffset + 0, yOffset + 0);
-    display->println("Smart");
-    display->setCursor(xOffset + 0, yOffset + 10);
-    display->println("Areometr");
+    
+    // Центрируем название проекта - "Smart" на первой строке
+    String line1 = "Smart";
+    int line1X = xOffset + (OLED_PHYSICAL_WIDTH - line1.length() * 6) / 2;
+    if (line1X < xOffset) line1X = xOffset;
+    display->setCursor(line1X, yOffset + 8);
+    display->println(line1);
 
-    display->setTextSize(1);
-    display->setCursor(xOffset + 0, yOffset + 30);
-    display->print("v");
-    display->println(FIRMWARE_VERSION);
+    // "Areometr" на второй строке
+    String line2 = "Areometr";
+    int line2X = xOffset + (OLED_PHYSICAL_WIDTH - line2.length() * 6) / 2;
+    if (line2X < xOffset) line2X = xOffset;
+    display->setCursor(line2X, yOffset + 18);
+    display->println(line2);
+
+    // Центрируем версию
+    String version = "v" + String(FIRMWARE_VERSION);
+    int versionX = xOffset + (OLED_PHYSICAL_WIDTH - version.length() * 6) / 2;
+    if (versionX < xOffset) versionX = xOffset;
+    display->setCursor(versionX, yOffset + 32);
+    display->println(version);
 
     display->display();
 }
 
-void DisplayManager::showMeasurement(float alcoholPercent, float temperature, bool isCompensated) {
+void DisplayManager::showMeasurement(float alcoholPercent, float temperature, bool isCompensated, int8_t batteryPercent, float batteryVoltage) {
+    // Не перезаписываем экран, если показывается ошибка
+    if (currentMode == MODE_ERROR) {
+        return;
+    }
+    
     currentMode = MODE_MEASUREMENT;
 
+    // Сохраняем значения
+    savedAlcohol = alcoholPercent;
+    savedTemperature = temperature;
+    savedBatteryPercent = batteryPercent;
+
+    // Проверяем, нужно ли переключить экран
+    unsigned long currentTime = millis();
+    bool cycleChanged = false;
+    if (currentTime - lastCycleTime >= CYCLE_INTERVAL) {
+        cycleIndex = (cycleIndex + 1) % 3;  // Цикл: 0->1->2->0
+        lastCycleTime = currentTime;
+        cycleChanged = true;
+    }
+
+    // Определяем текст для отображения без перерисовки
+    String displayText = "";
+    String labelText = "";
+
+    // Определяем, что показывать в зависимости от cycleIndex
+    switch (cycleIndex) {
+        case 0:  // Крепость (алкоголь)
+            labelText = "ALC";
+            // Форматируем: если >= 100, показываем "100%", иначе с 1 знаком после запятой
+            if (alcoholPercent >= 100.0f) {
+                displayText = "100%";
+            } else if (alcoholPercent >= 10.0f) {
+                // Для значений >= 10 показываем целое число, чтобы поместилось в 4 символа
+                displayText = String((int)alcoholPercent) + "%";
+            } else {
+                // Для значений < 10 показываем с 1 знаком после запятой (например "9.5%")
+                displayText = String(alcoholPercent, 1) + "%";
+            }
+            break;
+
+        case 1:  // Температура
+            labelText = "TEMP";
+            // Показываем температуру с 1 знаком после запятой и символом градуса
+            if (temperature >= 100.0f || temperature < 0.0f) {
+                // Если >= 100 или < 0, показываем целое число
+                displayText = String((int)temperature) + String((char)247) + "C";  // 247 = символ градуса
+            } else {
+                // Для нормальных значений показываем с 1 знаком
+                displayText = String(temperature, 1) + String((char)247) + "C";
+            }
+            break;
+
+        case 2:  // Заряд батареи
+            labelText = "BATT";
+            if (batteryPercent >= 0) {
+                displayText = String(batteryPercent) + "%";
+            } else {
+                displayText = "N/A";
+            }
+            break;
+    }
+
+    // Проверяем, нужно ли обновлять дисплей
+    // Обновляем, если: изменился цикл, изменился текст, или прошло достаточно времени с последнего обновления
+    bool needsUpdate = cycleChanged || 
+                      (lastDisplayedCycleIndex != cycleIndex) || 
+                      (lastDisplayedText != displayText) ||
+                      (currentTime - lastDisplayUpdate >= DISPLAY_UPDATE_INTERVAL);
+
+    if (!needsUpdate) {
+        return;  // Не перерисовываем, если ничего не изменилось
+    }
+
+    // Обновляем время последнего обновления
+    lastDisplayUpdate = currentTime;
+    lastDisplayedCycleIndex = cycleIndex;
+    lastDisplayedText = displayText;
+
     display->clearDisplay();
-    
+
     // Для дисплея 72x40 используем offset
     int xOffset = OLED_OFFSET_X;
     int yOffset = OLED_OFFSET_Y;
 
-    // Заголовок (компактный)
-    display->setTextSize(1);
-    display->setCursor(xOffset + 0, yOffset + 0);
-    display->print("ALC:");
-    display->drawLine(xOffset + 0, yOffset + 8, xOffset + OLED_PHYSICAL_WIDTH, yOffset + 8, SSD1306_WHITE);
+    // Используем максимально крупный шрифт (textSize 3 = 18x24 пикселей на символ)
+    // Для дисплея 72x40: максимально 4 символа по ширине, 1.5 строки по высоте
+    display->setTextSize(3);
+    display->setTextColor(SSD1306_WHITE);
 
-    // Процент алкоголя
-    display->setTextSize(1);
-    display->setCursor(xOffset + 0, yOffset + 10);
-    display->print(alcoholPercent, 1);
-    display->println("%");
-
-    // Температура
-    display->setTextSize(1);
-    display->setCursor(xOffset + 0, yOffset + 20);
-    display->print("T:");
-    display->print(temperature, 1);
-    display->print((char)247);  // Символ градуса
-    display->print("C");
-
-    // Индикатор компенсации
-    if (isCompensated) {
-        display->setCursor(xOffset + 0, yOffset + 30);
-        display->print("[TC]");
+    // Если текст слишком длинный для textSize 3 (более 4 символов), используем textSize 2
+    uint8_t textSize = 3;
+    if (displayText.length() > 4) {
+        textSize = 2;  // textSize 2 = 12x16 пикселей, до 6 символов по ширине
     }
-
+    
+    display->setTextSize(textSize);
+    
+    // Вычисляем позицию для центрирования текста
+    int charWidth = (textSize == 3) ? 18 : 12;
+    int charHeight = (textSize == 3) ? 24 : 16;
+    int textWidth = displayText.length() * charWidth;
+    int textX = xOffset + (OLED_PHYSICAL_WIDTH - textWidth) / 2;
+    if (textX < xOffset) textX = xOffset;  // Не выходим за левую границу
+    
+    // Центрируем по вертикали (высота экрана 40px) и опускаем на 6 пикселей ниже
+    int textY = yOffset + (OLED_PHYSICAL_HEIGHT - charHeight) / 2 + 6;
+    
+    // Если есть метка, показываем её мелким шрифтом сверху
+    if (!labelText.isEmpty()) {
+        display->setTextSize(1);
+        int labelX = xOffset + (OLED_PHYSICAL_WIDTH - labelText.length() * 6) / 2;
+        if (labelX < xOffset) labelX = xOffset;
+        display->setCursor(labelX, yOffset + 2);
+        display->print(labelText);
+        
+        // Возвращаем крупный шрифт для основного текста
+        display->setTextSize(textSize);
+    }
+    
+    // Показываем основное значение (цифры)
+    display->setCursor(textX, textY);
+    display->print(displayText);
+    
     display->display();
 }
 
@@ -280,22 +356,34 @@ void DisplayManager::showCalibration(uint8_t step, uint16_t value) {
     int yOffset = OLED_OFFSET_Y;
 
     display->setTextSize(1);
-    display->setCursor(xOffset + 0, yOffset + 0);
-    display->println("CALIBRATE");
-    display->drawLine(xOffset + 0, yOffset + 8, xOffset + OLED_PHYSICAL_WIDTH, yOffset + 8, SSD1306_WHITE);
+    
+    // "CALIBRATE" по центру
+    String calibrateLabel = "CALIBRATE";
+    int calibrateX = xOffset + (OLED_PHYSICAL_WIDTH - calibrateLabel.length() * 6) / 2;
+    if (calibrateX < xOffset) calibrateX = xOffset;
+    display->setCursor(calibrateX, yOffset + 0);
+    display->println(calibrateLabel);
 
-    display->setTextSize(1);
-    display->setCursor(xOffset + 0, yOffset + 12);
-
+    // Шаг калибровки по центру, опущен на строку ниже
+    String stepText = "";
     if (step == 0) {
-        display->println("Step1:Water");
+        stepText = "Step1:Water";
     } else if (step == 1) {
-        display->println("Step2:Alco");
+        stepText = "Step2:Alco";
+    }
+    if (!stepText.isEmpty()) {
+        int stepX = xOffset + (OLED_PHYSICAL_WIDTH - stepText.length() * 6) / 2;
+        if (stepX < xOffset) stepX = xOffset;
+        display->setCursor(stepX, yOffset + 18);
+        display->println(stepText);
     }
 
-    display->setCursor(xOffset + 0, yOffset + 24);
-    display->print("Val:");
-    display->println(value);
+    // Значение по центру
+    String valueText = "Val:" + String(value);
+    int valueX = xOffset + (OLED_PHYSICAL_WIDTH - valueText.length() * 6) / 2;
+    if (valueX < xOffset) valueX = xOffset;
+    display->setCursor(valueX, yOffset + 30);
+    display->println(valueText);
 
     display->display();
 }
@@ -314,47 +402,48 @@ void DisplayManager::showNetworkInfo(const String &ssid, const String &ip, bool 
     
     // Максимум 12 символов на строку для физической ширины 72px (72px / 6px на символ)
     
-    // Первая строка: SSID (обрезаем до 12 символов)
-    display->setCursor(xOffset + 0, yOffset + 0);
+    // Первая строка: "WiFi:" по центру
+    String wifiLabel = "WiFi:";
+    int wifiLabelX = xOffset + (OLED_PHYSICAL_WIDTH - wifiLabel.length() * 6) / 2;
+    if (wifiLabelX < xOffset) wifiLabelX = xOffset;
+    display->setCursor(wifiLabelX, yOffset + 0);
+    display->println(wifiLabel);
+    
+    // Вторая строка: SSID (обрезаем до 12 символов) по центру
     String ssidShort = ssid;
     if (ssidShort.length() > 12) {
         ssidShort = ssidShort.substring(0, 12);
     }
+    int ssidX = xOffset + (OLED_PHYSICAL_WIDTH - ssidShort.length() * 6) / 2;
+    if (ssidX < xOffset) ssidX = xOffset;
+    display->setCursor(ssidX, yOffset + 10);
     display->println(ssidShort);
     
-    // Вторая строка: IP адрес (если длиннее 12 символов, переносим последние 3)
-    display->setCursor(xOffset + 0, yOffset + 10);
+    // Третья строка: IP адрес (если длиннее 12 символов, переносим последние 3) по центру
+    display->setCursor(xOffset + 0, yOffset + 20);
     if (ip.length() > 12) {
         // Показываем первые символы (без последних 3)
         String ipFirst = ip.substring(0, ip.length() - 3);
         if (ipFirst.length() > 12) {
             ipFirst = ipFirst.substring(0, 12);
         }
+        int ipFirstX = xOffset + (OLED_PHYSICAL_WIDTH - ipFirst.length() * 6) / 2;
+        if (ipFirstX < xOffset) ipFirstX = xOffset;
+        display->setCursor(ipFirstX, yOffset + 20);
         display->println(ipFirst);
         
-        // Третья строка: последние 3 символа IP адреса
-        display->setCursor(xOffset + 0, yOffset + 20);
+        // Четвертая строка: последние 3 символа IP адреса по центру
         String ipLast = ip.substring(ip.length() - 3);
+        int ipLastX = xOffset + (OLED_PHYSICAL_WIDTH - ipLast.length() * 6) / 2;
+        if (ipLastX < xOffset) ipLastX = xOffset;
+        display->setCursor(ipLastX, yOffset + 30);
         display->println(ipLast);
-        
-        // Четвертая строка: Статус
-        display->setCursor(xOffset + 0, yOffset + 30);
-        String status = connected ? "Connected" : "AP Mode";
-        if (status.length() > 12) {
-            status = status.substring(0, 12);
-        }
-        display->println(status);
     } else {
-        // IP адрес помещается на одну строку
+        // IP адрес помещается на одну строку - центрируем
+        int ipX = xOffset + (OLED_PHYSICAL_WIDTH - ip.length() * 6) / 2;
+        if (ipX < xOffset) ipX = xOffset;
+        display->setCursor(ipX, yOffset + 20);
         display->println(ip);
-        
-        // Третья строка: Статус
-        display->setCursor(xOffset + 0, yOffset + 20);
-        String status = connected ? "Connected" : "AP Mode";
-        if (status.length() > 12) {
-            status = status.substring(0, 12);
-        }
-        display->println(status);
     }
 
     display->display();
@@ -370,24 +459,47 @@ void DisplayManager::showError(const String &error) {
     int xOffset = OLED_OFFSET_X;
     int yOffset = OLED_OFFSET_Y;
 
+    // "ERROR!" крупным шрифтом и по центру
+    display->setTextSize(2);
+    String errorLabel = "ERROR!";
+    int errorLabelWidth = errorLabel.length() * 12;  // textSize 2 = 12px на символ
+    int errorLabelX = xOffset + (OLED_PHYSICAL_WIDTH - errorLabelWidth) / 2;
+    if (errorLabelX < xOffset) errorLabelX = xOffset;
+    display->setCursor(errorLabelX, yOffset + 0);
+    display->println(errorLabel);
+
+    // Текст ошибки по центру
     display->setTextSize(1);
-    display->setCursor(xOffset + 0, yOffset + 0);
-    display->println("ERROR!");
-    display->drawLine(xOffset + 0, yOffset + 8, xOffset + OLED_PHYSICAL_WIDTH, yOffset + 8, SSD1306_WHITE);
+    
+    // Специальная обработка для "Not calibrated!"
+    if (error.indexOf("Not") >= 0 && error.indexOf("calibrated") >= 0) {
+        String line1 = "Not";
+        String line2 = "calibrated";
+        
+        int line1X = xOffset + (OLED_PHYSICAL_WIDTH - line1.length() * 6) / 2;
+        if (line1X < xOffset) line1X = xOffset;
+        display->setCursor(line1X, yOffset + 18);
+        display->println(line1);
+        
+        int line2X = xOffset + (OLED_PHYSICAL_WIDTH - line2.length() * 6) / 2;
+        if (line2X < xOffset) line2X = xOffset;
+        display->setCursor(line2X, yOffset + 28);
+        display->println(line2);
+    } else {
+        // Обычная обработка - разбиваем на строки
+        int lineHeight = 10;
+        int y = yOffset + 18;
+        int maxChars = 12;  // Максимум символов на строку для дисплея 72px (72/6=12)
 
-    display->setTextSize(1);
-
-    // Разбиваем длинное сообщение на строки для дисплея 72x40
-    int lineHeight = 10;
-    int y = yOffset + 12;
-    int maxChars = 12;  // Максимум символов на строку для дисплея 72px (72/6=12)
-
-    for (size_t i = 0; i < error.length(); i += maxChars) {
-        String line = error.substring(i, min(i + maxChars, error.length()));
-        display->setCursor(xOffset + 0, y);
-        display->println(line);
-        y += lineHeight;
-        if (y > yOffset + OLED_PHYSICAL_HEIGHT - lineHeight) break;  // Не выходим за границы
+        for (size_t i = 0; i < error.length(); i += maxChars) {
+            String line = error.substring(i, min(i + maxChars, error.length()));
+            int lineX = xOffset + (OLED_PHYSICAL_WIDTH - line.length() * 6) / 2;
+            if (lineX < xOffset) lineX = xOffset;
+            display->setCursor(lineX, y);
+            display->println(line);
+            y += lineHeight;
+            if (y > yOffset + OLED_PHYSICAL_HEIGHT - lineHeight) break;  // Не выходим за границы
+        }
     }
 
     display->display();
@@ -402,19 +514,36 @@ void DisplayManager::showMessage(const String &message, uint16_t duration) {
 
     display->setTextSize(1);
     
-    // Обрезаем длинные сообщения для дисплея 72px (max 12 символов)
-    String msg = message;
-    if (msg.length() > 12) {
-        msg = msg.substring(0, 12);
+    // Специальная обработка для "Starting Wi-Fi..."
+    if (message.indexOf("Starting") >= 0 && message.indexOf("Wi-Fi") >= 0) {
+        String line1 = "Starting";
+        String line2 = "wi-fi";
+        
+        int line1X = xOffset + (OLED_PHYSICAL_WIDTH - line1.length() * 6) / 2;
+        if (line1X < xOffset) line1X = xOffset;
+        display->setCursor(line1X, yOffset + 12);
+        display->println(line1);
+        
+        int line2X = xOffset + (OLED_PHYSICAL_WIDTH - line2.length() * 6) / 2;
+        if (line2X < xOffset) line2X = xOffset;
+        display->setCursor(line2X, yOffset + 22);
+        display->println(line2);
+    } else {
+        // Обрезаем длинные сообщения для дисплея 72px (max 12 символов)
+        String msg = message;
+        if (msg.length() > 12) {
+            msg = msg.substring(0, 12);
+        }
+        
+        // Центрируем текст в физической области 72x40
+        int x = xOffset + (OLED_PHYSICAL_WIDTH - msg.length() * 6) / 2;
+        int y = yOffset + (OLED_PHYSICAL_HEIGHT / 2) - 4;
+        if (x < xOffset) x = xOffset;
+        
+        display->setCursor(x, y);
+        display->println(msg);
     }
     
-    // Центрируем текст в физической области 72x40
-    int x = xOffset + (OLED_PHYSICAL_WIDTH - msg.length() * 6) / 2;
-    int y = yOffset + (OLED_PHYSICAL_HEIGHT / 2) - 4;
-    if (x < xOffset) x = xOffset;
-    
-    display->setCursor(x, y);
-    display->println(msg);
     display->display();
 
     if (duration > 0) {
@@ -431,4 +560,8 @@ void DisplayManager::setBrightness(uint8_t brightness) {
     // 0 = минимум, 255 = максимум
     display->ssd1306_command(SSD1306_SETCONTRAST);
     display->ssd1306_command(brightness);
+}
+
+bool DisplayManager::isShowingError() const {
+    return currentMode == MODE_ERROR;
 }

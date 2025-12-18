@@ -10,12 +10,18 @@
 #include "MQTTBridge.h"
 #include "FractionDetector.h"
 #include "DistillationSession.h"
+#include "LevelDetector.h"
+#include "ReceiverController.h"
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
 
 #ifdef USE_ADS1115
 #include "ADS1115Driver.h"
+#endif
+
+#ifdef BATTERY_MONITOR_ENABLED
+#include "BatteryMonitor.h"
 #endif
 
 // Глобальные объекты
@@ -32,6 +38,18 @@ DataLogger logger;
 MQTTBridge mqttBridge;
 FractionDetector fractionDetector;
 DistillationSession session;
+
+#ifdef RECEIVER_LEVEL_DETECTION_ENABLED
+LevelDetector levelDetector;
+#endif
+
+#ifdef RECEIVER_CONTROL_ENABLED
+ReceiverController receiverController;
+#endif
+
+#ifdef BATTERY_MONITOR_ENABLED
+BatteryMonitor batteryMonitor(BATTERY_ADC_PIN, BATTERY_VOLTAGE_MIN, BATTERY_VOLTAGE_MAX, BATTERY_LOW_THRESHOLD);
+#endif
 
 // Переменные состояния
 float currentAlcohol = 0.0f;
@@ -120,8 +138,39 @@ void setup() {
         Serial.println("WARNING: Logger initialization failed");
     }
 
+#ifdef BATTERY_MONITOR_ENABLED
+    // Инициализация монитора батареи
+    if (batteryMonitor.begin()) {
+        Serial.println("Battery monitor initialized");
+    } else {
+        Serial.println("WARNING: Battery monitor initialization failed");
+    }
+#endif
+
     // Загрузка настроек фракций
     loadFractionThresholds();
+
+    // Инициализация LevelDetector и ReceiverController
+#ifdef RECEIVER_LEVEL_DETECTION_ENABLED
+#ifdef USE_ADS1115
+    if (ads1115Driver.isInitialized()) {
+        if (levelDetector.begin(&ads1115Driver)) {
+            Serial.println("LevelDetector initialized successfully");
+            
+#ifdef RECEIVER_CONTROL_ENABLED
+            // Инициализация ReceiverController
+            if (receiverController.begin(&levelDetector)) {
+                Serial.println("ReceiverController initialized successfully");
+            } else {
+                Serial.println("WARNING: ReceiverController initialization failed");
+            }
+#endif
+        } else {
+            Serial.println("WARNING: LevelDetector initialization failed");
+        }
+    }
+#endif
+#endif
 
     // Настройка callback при смене фракций
     fractionDetector.setFractionChangeCallback([](Fraction newFraction, Fraction oldFraction) {
@@ -129,6 +178,13 @@ void setup() {
         String oldFractionName = FractionDetector::getFractionName(oldFraction);
         
         Serial.printf("Fraction changed: %s -> %s\n", oldFractionName.c_str(), fractionName.c_str());
+        
+        // Автоматическое переключение приемника при смене фракции
+#ifdef RECEIVER_CONTROL_ENABLED
+        if (receiverController.isAutoSwitchEnabled()) {
+            receiverController.switchReceiverByFraction(newFraction);
+        }
+#endif
         
         // Публикация в MQTT
         if (mqttBridge.isConnected()) {
@@ -160,6 +216,46 @@ void setup() {
     webServer.setRawValueCallback([]() { return capacitiveSensor.readRaw(); });
     webServer.setStabilityCallback([]() { return capacitiveSensor.getLastMeasurementStats().stability; });
 
+#ifdef USE_ADS1115
+    // Callback для статуса ADS1115
+    webServer.setADS1115StatusCallback([]() {
+        JsonDocument doc;
+        doc["enabled"] = true;
+        doc["initialized"] = ads1115Driver.isInitialized();
+        doc["connected"] = ads1115Driver.isConnected();
+        doc["resolution"] = ads1115Driver.getResolution();
+        doc["gain"] = ads1115Driver.getGain();
+        doc["data_rate"] = ads1115Driver.getDataRate();
+        doc["max_voltage"] = ads1115Driver.getMaxVoltage();
+        
+        // Попытка прочитать текущее напряжение дифференциального сигнала
+        if (ads1115Driver.isInitialized() && ads1115Driver.isConnected()) {
+            float voltage = ads1115Driver.readDifferentialVoltage(ADS1115_CHANNEL_0, ADS1115_CHANNEL_1);
+            doc["voltage"] = voltage;
+        } else {
+            doc["voltage"] = 0.0f;
+        }
+        
+        String json;
+        serializeJson(doc, json);
+        return json;
+    });
+#else
+    // Если ADS1115 не включен, возвращаем информацию о встроенном ADC
+    webServer.setADS1115StatusCallback([]() {
+        JsonDocument doc;
+        doc["enabled"] = false;
+        doc["initialized"] = false;
+        doc["connected"] = false;
+        doc["resolution"] = 12;
+        doc["adc_type"] = "internal";
+        
+        String json;
+        serializeJson(doc, json);
+        return json;
+    });
+#endif
+
     // Callbacks для калибровки
     webServer.setGetCalibrationDataCallback([]() {
         return capacitiveSensor.exportCalibration();
@@ -179,6 +275,85 @@ void setup() {
         isCalibrated = false;
         saveCalibrationData();
     });
+
+    // Callbacks для LevelDetector
+#ifdef RECEIVER_LEVEL_DETECTION_ENABLED
+    webServer.setGetLevelStatusCallback([]() {
+        JsonDocument doc;
+        doc["enabled"] = levelDetector.isEnabled();
+        doc["overflow"] = levelDetector.isOverflow();
+        doc["voltage"] = levelDetector.getCurrentVoltage();
+        doc["threshold"] = levelDetector.getThreshold();
+        doc["channel"] = ADS1115_LEVEL_CHANNEL;
+        
+        String json;
+        serializeJson(doc, json);
+        return json;
+    });
+
+    webServer.setGetLevelVoltageCallback([]() {
+        return levelDetector.getCurrentVoltage();
+    });
+
+    webServer.setSetLevelThresholdCallback([](float threshold) {
+        levelDetector.setThreshold(threshold);
+        return true;
+    });
+
+    webServer.setCalibrateLevelEmptyCallback([]() {
+        levelDetector.calibrateEmpty();
+    });
+
+    webServer.setCalibrateLevelFullCallback([]() {
+        levelDetector.calibrateFull();
+    });
+#endif
+
+    // Callbacks для ReceiverController
+#ifdef RECEIVER_CONTROL_ENABLED
+    webServer.setGetReceiverStatusCallback([]() {
+        JsonDocument doc;
+        doc["enabled"] = receiverController.isEnabled();
+        doc["auto_switch"] = receiverController.isAutoSwitchEnabled();
+        doc["active_receiver"] = receiverController.getActiveReceiverId();
+        
+        JsonArray receiversArray = doc["receivers"].to<JsonArray>();
+        for (uint8_t i = 0; i < RECEIVER_COUNT; i++) {
+            const Receiver& receiver = receiverController.getReceiver(i);
+            JsonObject receiverObj = receiversArray.add<JsonObject>();
+            receiverObj["id"] = receiver.id;
+            receiverObj["name"] = receiver.name;
+            receiverObj["active"] = receiver.isActive;
+            receiverObj["overflowing"] = receiver.isOverflowing;
+            receiverObj["current_volume"] = receiver.currentVolume;
+            receiverObj["max_volume"] = receiver.maxVolume;
+            receiverObj["fraction"] = FractionDetector::getFractionName(receiver.associatedFraction);
+        }
+        
+        String json;
+        serializeJson(doc, json);
+        return json;
+    });
+
+    webServer.setSwitchReceiverCallback([](uint8_t receiverId) {
+        return receiverController.switchReceiver(receiverId);
+    });
+
+    webServer.setSetOverflowActionCallback([](const String& action) {
+        OverflowAction overflowAction;
+        if (action == "switch_next") {
+            overflowAction = OverflowAction::SWITCH_NEXT;
+        } else if (action == "stop") {
+            overflowAction = OverflowAction::STOP;
+        } else if (action == "notify_only") {
+            overflowAction = OverflowAction::NOTIFY_ONLY;
+        } else {
+            return false;
+        }
+        receiverController.setOverflowAction(overflowAction);
+        return true;
+    });
+#endif
 
     // Для удаления точки нужно парсить JSON и пересоздавать калибровку
     webServer.setDeleteCalibrationPointCallback([](uint8_t index) {
@@ -387,6 +562,40 @@ void setup() {
         return DistillationSession::getSessionsList();
     });
 
+    // Callbacks для DataLogger
+    webServer.setExportLogsCSVCallback([]() {
+        return logger.exportToCSV();
+    });
+
+    webServer.setGetLogsDataCallback([](unsigned long startTime, unsigned long endTime) {
+        auto records = logger.getRecordsInRange(startTime, endTime);
+        JsonDocument doc;
+        JsonArray array = doc["measurements"].to<JsonArray>();
+        
+        for (const auto &record : records) {
+            JsonObject obj = array.add<JsonObject>();
+            obj["timestamp"] = record.timestamp;
+            obj["alcohol"] = record.alcoholPercent;
+            obj["temperature"] = record.temperature;
+            obj["compensated"] = record.compensated;
+        }
+        
+        String json;
+        serializeJson(doc, json);
+        return json;
+    });
+
+    webServer.setGetLogsStatsCallback([]() {
+        return logger.calculateStatistics();
+    });
+
+#ifdef BATTERY_MONITOR_ENABLED
+    // Callback для статуса батареи
+    webServer.setGetBatteryStatusCallback([]() {
+        return batteryMonitor.getStatusJSON();
+    });
+#endif
+
     // Показываем информацию о сети
     display.showNetworkInfo(webServer.getSSID(), webServer.getIP(), webServer.isConnected());
     delay(3000);
@@ -428,8 +637,39 @@ void loop() {
         logger.addMeasurement(currentAlcohol, currentTemperature, true);
     }
 
-    // Обновление дисплея
+    // Обновление LevelDetector и ReceiverController
+#ifdef RECEIVER_LEVEL_DETECTION_ENABLED
+    levelDetector.update();
+#endif
+
+#ifdef RECEIVER_CONTROL_ENABLED
+    receiverController.handle();
+#endif
+
+    // Обновление дисплея с информацией о батарее
+#ifdef BATTERY_MONITOR_ENABLED
+    int8_t batteryPercent = batteryMonitor.getPercent();
+    float batteryVoltage = batteryMonitor.getVoltage();
+    display.showMeasurement(currentAlcohol, currentTemperature, true, batteryPercent, batteryVoltage);
+#else
+    display.showMeasurement(currentAlcohol, currentTemperature, true);
+#endif
     display.update();
+
+#ifdef BATTERY_MONITOR_ENABLED
+    // Обновление монитора батареи
+    batteryMonitor.update();
+    
+    // Реализация энергосбережения при низком заряде
+    if (batteryMonitor.isCriticalBattery()) {
+        // Критический заряд - можно отключить Wi-Fi и снизить частоту измерений
+        static unsigned long lastCriticalWarning = 0;
+        if (millis() - lastCriticalWarning > 60000) {  // Раз в минуту
+            Serial.println("CRITICAL: Battery level critically low!");
+            lastCriticalWarning = millis();
+        }
+    }
+#endif
 
     delay(10);
 }
@@ -470,10 +710,26 @@ void performMeasurement() {
     // Публикация в MQTT
     if (mqttBridge.isConnected()) {
         mqttBridge.publishMeasurement(currentAlcohol, currentTemperature, stability);
+        
+#ifdef BATTERY_MONITOR_ENABLED
+        // Публикуем статус батареи реже - каждые 30 секунд
+        static unsigned long lastBatteryPublish = 0;
+        unsigned long now = millis();
+        if (now - lastBatteryPublish > 30000) {
+            mqttBridge.publishBatteryStatus(batteryMonitor.getVoltage(), 
+                                            batteryMonitor.getPercent(),
+                                            batteryMonitor.isBatteryCharging());
+            lastBatteryPublish = now;
+        }
+#endif
     }
 
     // Отображение результатов
+#ifdef BATTERY_MONITOR_ENABLED
+    display.showMeasurement(currentAlcohol, currentTemperature, true, batteryMonitor.getPercent(), batteryMonitor.getVoltage());
+#else
     display.showMeasurement(currentAlcohol, currentTemperature, true);
+#endif
 
     Serial.println("=== Measurement ===");
     Serial.println("Raw Alcohol: " + String(rawAlcohol) + "%");

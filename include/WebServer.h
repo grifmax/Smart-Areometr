@@ -31,6 +31,7 @@ private:
     std::function<bool()> calibratedCallback;
     std::function<uint16_t()> rawValueCallback;
     std::function<uint8_t()> stabilityCallback;
+    std::function<String()> ads1115StatusCallback;  // JSON с информацией об ADS1115
 
     // Callback функции для управления калибровкой
     std::function<bool(float, float)> addCalibrationPointCallback;  // (alcoholPercent, temperature) -> success
@@ -61,6 +62,24 @@ private:
     std::function<String()> exportSessionJSONCallback;              // -> JSON экспорт
     std::function<String()> exportSessionCSVCallback;                // -> CSV экспорт
     std::function<String()> getSessionsListCallback;                // -> JSON список сессий
+
+    // Callback функции для работы с DataLogger
+    std::function<String()> exportLogsCSVCallback;                   // -> CSV экспорт логов
+    std::function<String(unsigned long, unsigned long)> getLogsDataCallback;  // (startTime, endTime) -> JSON
+    std::function<String()> getLogsStatsCallback;                    // -> JSON статистика
+
+    // Callback функции для работы с BatteryMonitor
+    std::function<String()> getBatteryStatusCallback;                // -> JSON статус батареи
+
+    // Callback функции для работы с LevelDetector и ReceiverController
+    std::function<String()> getLevelStatusCallback;                  // -> JSON статус детектора уровня
+    std::function<float()> getLevelVoltageCallback;                  // -> текущее напряжение
+    std::function<bool(float)> setLevelThresholdCallback;            // (threshold) -> success
+    std::function<void()> calibrateLevelEmptyCallback;               // Калибровка пустого
+    std::function<void()> calibrateLevelFullCallback;                // Калибровка полного
+    std::function<String()> getReceiverStatusCallback;               // -> JSON статус приемников
+    std::function<bool(uint8_t)> switchReceiverCallback;             // (receiverId) -> success
+    std::function<bool(const String&)> setOverflowActionCallback;    // (action) -> success
 
     /**
      * @brief Настроить маршруты веб-сервера
@@ -154,6 +173,11 @@ public:
      * @brief Установить callback для получения стабильности
      */
     void setStabilityCallback(std::function<uint8_t()> callback);
+
+    /**
+     * @brief Установить callback для получения статуса ADS1115
+     */
+    void setADS1115StatusCallback(std::function<String()> callback);
 
     /**
      * @brief Установить callback для добавления калибровочной точки
@@ -264,6 +288,66 @@ public:
      * @brief Установить callback для получения списка сессий
      */
     void setGetSessionsListCallback(std::function<String()> callback);
+
+    /**
+     * @brief Установить callback для экспорта логов в CSV
+     */
+    void setExportLogsCSVCallback(std::function<String()> callback);
+
+    /**
+     * @brief Установить callback для получения данных логов за период
+     */
+    void setGetLogsDataCallback(std::function<String(unsigned long, unsigned long)> callback);
+
+    /**
+     * @brief Установить callback для получения статистики логов
+     */
+    void setGetLogsStatsCallback(std::function<String()> callback);
+
+    /**
+     * @brief Установить callback для получения статуса батареи
+     */
+    void setGetBatteryStatusCallback(std::function<String()> callback);
+
+    /**
+     * @brief Установить callback для получения статуса детектора уровня
+     */
+    void setGetLevelStatusCallback(std::function<String()> callback);
+
+    /**
+     * @brief Установить callback для получения напряжения уровня
+     */
+    void setGetLevelVoltageCallback(std::function<float()> callback);
+
+    /**
+     * @brief Установить callback для установки порога уровня
+     */
+    void setSetLevelThresholdCallback(std::function<bool(float)> callback);
+
+    /**
+     * @brief Установить callback для калибровки пустого состояния
+     */
+    void setCalibrateLevelEmptyCallback(std::function<void()> callback);
+
+    /**
+     * @brief Установить callback для калибровки полного состояния
+     */
+    void setCalibrateLevelFullCallback(std::function<void()> callback);
+
+    /**
+     * @brief Установить callback для получения статуса приемников
+     */
+    void setGetReceiverStatusCallback(std::function<String()> callback);
+
+    /**
+     * @brief Установить callback для переключения приемника
+     */
+    void setSwitchReceiverCallback(std::function<bool(uint8_t)> callback);
+
+    /**
+     * @brief Установить callback для установки действия при переполнении
+     */
+    void setSetOverflowActionCallback(std::function<bool(const String&)> callback);
 
     /**
      * @brief Обработка OTA и веб-сервера (вызывать в loop)

@@ -23,6 +23,9 @@ MQTTBridge::MQTTBridge()
     topicTemperature = String(MQTT_BASE_TOPIC) + "/" + MQTT_TOPIC_TEMPERATURE;
     topicFraction = String(MQTT_BASE_TOPIC) + "/" + MQTT_TOPIC_FRACTION;
     topicStability = String(MQTT_BASE_TOPIC) + "/" + MQTT_TOPIC_STABILITY;
+    topicBatteryVoltage = String(MQTT_BASE_TOPIC) + "/battery/voltage";
+    topicBatteryPercent = String(MQTT_BASE_TOPIC) + "/battery/percent";
+    topicBatteryStatus = String(MQTT_BASE_TOPIC) + "/battery/status";
 
     mqttBridgeInstance = this;
 }
@@ -90,6 +93,9 @@ void MQTTBridge::setBaseTopic(const String &base) {
     topicTemperature = base + "/" + MQTT_TOPIC_TEMPERATURE;
     topicFraction = base + "/" + MQTT_TOPIC_FRACTION;
     topicStability = base + "/" + MQTT_TOPIC_STABILITY;
+    topicBatteryVoltage = base + "/battery/voltage";
+    topicBatteryPercent = base + "/battery/percent";
+    topicBatteryStatus = base + "/battery/status";
 }
 
 bool MQTTBridge::reconnect() {
@@ -194,6 +200,35 @@ void MQTTBridge::publishFractionChange(const String &fraction) {
     mqttClient->publish(eventTopic.c_str(), eventData.c_str(), false);
 
     Serial.printf("MQTT: Fraction changed to %s\n", fraction.c_str());
+}
+
+void MQTTBridge::publishBatteryStatus(float voltage, uint8_t percent, bool charging) {
+    if (!isConnected()) return;
+
+    char buffer[16];
+
+    // Публикуем напряжение
+    snprintf(buffer, sizeof(buffer), "%.2f", voltage);
+    mqttClient->publish(topicBatteryVoltage.c_str(), buffer, false);
+
+    // Публикуем процент заряда
+    snprintf(buffer, sizeof(buffer), "%d", percent);
+    mqttClient->publish(topicBatteryPercent.c_str(), buffer, false);
+
+    // Публикуем полный статус (JSON)
+    JsonDocument doc;
+    doc["voltage"] = voltage;
+    doc["percent"] = percent;
+    doc["charging"] = charging;
+    doc["low_battery"] = percent <= 20;
+    doc["critical"] = percent <= 10;
+
+    String json;
+    serializeJson(doc, json);
+    mqttClient->publish(topicBatteryStatus.c_str(), json.c_str(), false);
+
+    Serial.printf("MQTT: Published battery status - %.2fV, %d%%, charging: %s\n",
+                  voltage, percent, charging ? "yes" : "no");
 }
 
 void MQTTBridge::publishState() {
@@ -345,6 +380,34 @@ void MQTTBridge::publishDiscovery() {
 
     String fractionTopic = String(MQTT_HA_DISCOVERY_PREFIX) + "/sensor/" + deviceId + "/fraction/config";
     mqttClient->publish(fractionTopic.c_str(), fractionConfig.c_str(), true);
+
+    // 5. Sensor: Battery voltage
+    String batteryVoltageConfig = String("{") +
+        "\"name\":\"Battery Voltage\"," +
+        "\"unique_id\":\"" + deviceId + "_battery_voltage\"," +
+        "\"state_topic\":\"" + topicBatteryVoltage + "\"," +
+        "\"unit_of_measurement\":\"V\"," +
+        "\"device_class\":\"voltage\"," +
+        "\"state_class\":\"measurement\"," +
+        "\"icon\":\"mdi:battery\"" +
+        deviceInfo + "}";
+
+    String batteryVoltageTopic = String(MQTT_HA_DISCOVERY_PREFIX) + "/sensor/" + deviceId + "/battery_voltage/config";
+    mqttClient->publish(batteryVoltageTopic.c_str(), batteryVoltageConfig.c_str(), true);
+
+    // 6. Sensor: Battery percentage
+    String batteryPercentConfig = String("{") +
+        "\"name\":\"Battery\"," +
+        "\"unique_id\":\"" + deviceId + "_battery_percent\"," +
+        "\"state_topic\":\"" + topicBatteryPercent + "\"," +
+        "\"unit_of_measurement\":\"%\"," +
+        "\"device_class\":\"battery\"," +
+        "\"state_class\":\"measurement\"," +
+        "\"icon\":\"mdi:battery\"" +
+        deviceInfo + "}";
+
+    String batteryPercentTopic = String(MQTT_HA_DISCOVERY_PREFIX) + "/sensor/" + deviceId + "/battery_percent/config";
+    mqttClient->publish(batteryPercentTopic.c_str(), batteryPercentConfig.c_str(), true);
 
     Serial.println("MQTT: Home Assistant Discovery published");
 }

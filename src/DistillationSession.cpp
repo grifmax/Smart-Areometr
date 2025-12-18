@@ -153,18 +153,30 @@ void DistillationSession::updateStatistics() {
     float sumAlcohol = 0;
     
     // Подсчитываем статистику по фракциям
-    float fractionVolumes[5] = {0, 0, 0, 0, 0};
-    float fractionAlcoholSum[5] = {0, 0, 0, 0, 0};
-    uint16_t fractionCounts[5] = {0, 0, 0, 0, 0};
+    float fractionVolumes[5] = {0, 0, 0, 0, 0};        // Объем каждой фракции (мл)
+    float fractionAlcoholSum[5] = {0, 0, 0, 0, 0};     // Сумма крепости для усреднения
+    uint16_t fractionCounts[5] = {0, 0, 0, 0, 0};      // Количество точек
+    unsigned long fractionTimeSpent[5] = {0, 0, 0, 0, 0}; // Время в каждой фракции (мс)
+    unsigned long previousTimestamp = 0;
     
     for (uint16_t i = 0; i < dataPointsCount; i++) {
         const DataPoint &point = dataPoints[i];
         int fracIndex = static_cast<int>(point.fraction);
         
+        // Вычисляем время, проведенное в этой фракции
+        if (i > 0) {
+            unsigned long timeDelta = point.timestamp - previousTimestamp;
+            if (fracIndex >= 0 && fracIndex < 5) {
+                fractionTimeSpent[fracIndex] += timeDelta;
+            }
+        }
+        previousTimestamp = point.timestamp;
+        
         if (fracIndex >= 0 && fracIndex < 5) {
             fractionCounts[fracIndex]++;
             fractionAlcoholSum[fracIndex] += point.alcohol;
-            // Предполагаем, что каждое измерение = 1 мл (можно настроить)
+            // Предполагаем, что каждое измерение соответствует примерно 1 мл отбора
+            // Это может быть настроено в зависимости от частоты измерений и реальной скорости отбора
             fractionVolumes[fracIndex] += 1.0f;
         }
         
@@ -175,7 +187,8 @@ void DistillationSession::updateStatistics() {
     avgAlcoholPercent = sumAlcohol / dataPointsCount;
     
     // Общий объем (в мл, потом переведем в литры)
-    totalVolumeCollected = dataPointsCount * 1.0f / 1000.0f;  // Примерно 1 мл на точку
+    // Предполагаем, что каждая точка = примерно 1 мл (можно настроить)
+    totalVolumeCollected = dataPointsCount * 1.0f / 1000.0f;  // Переводим в литры
     
     // Абсолютный спирт
     totalAlcoholCollected = totalVolumeCollected * avgAlcoholPercent / 100.0f;
@@ -254,6 +267,74 @@ String DistillationSession::exportToJSON() const {
     doc["total_alcohol_collected"] = totalAlcoholCollected;
     doc["avg_alcohol_percent"] = avgAlcoholPercent;
     doc["data_points_count"] = dataPointsCount;
+    doc["collection_rate"] = getCollectionRate();  // мл/мин
+    doc["progress"] = getProgress();  // Процент выполнения
+    
+    // Статистика по фракциям
+    JsonObject fractionsStats = doc["fractions"].to<JsonObject>();
+    float fractionVolumes[5] = {0, 0, 0, 0, 0};
+    float fractionAlcoholSum[5] = {0, 0, 0, 0, 0};
+    uint16_t fractionCounts[5] = {0, 0, 0, 0, 0};
+    unsigned long fractionTimeSpent[5] = {0, 0, 0, 0, 0};
+    unsigned long previousTimestamp = 0;
+    unsigned long totalActiveTime = 0;
+    
+    // Вычисляем статистику
+    for (uint16_t i = 0; i < dataPointsCount; i++) {
+        const DataPoint &point = dataPoints[i];
+        int fracIndex = static_cast<int>(point.fraction);
+        
+        if (i > 0) {
+            unsigned long timeDelta = point.timestamp - previousTimestamp;
+            totalActiveTime += timeDelta;
+            if (fracIndex >= 0 && fracIndex < 5) {
+                fractionTimeSpent[fracIndex] += timeDelta;
+            }
+        }
+        previousTimestamp = point.timestamp;
+        
+        if (fracIndex >= 0 && fracIndex < 5) {
+            fractionCounts[fracIndex]++;
+            fractionAlcoholSum[fracIndex] += point.alcohol;
+            fractionVolumes[fracIndex] += 1.0f;  // Примерно 1 мл на точку
+        }
+    }
+    
+    // Добавляем статистику по каждой фракции
+    Fraction fractions[] = {Fraction::FORESHOTS, Fraction::HEADS, Fraction::BODY, Fraction::TAILS, Fraction::UNKNOWN};
+    for (int i = 0; i < 5; i++) {
+        JsonObject fracStat = fractionsStats[FractionDetector::getFractionName(fractions[i])].to<JsonObject>();
+        fracStat["volume_ml"] = fractionVolumes[i];
+        fracStat["volume_l"] = fractionVolumes[i] / 1000.0f;
+        fracStat["count"] = fractionCounts[i];
+        
+        if (fractionCounts[i] > 0) {
+            fracStat["avg_alcohol"] = fractionAlcoholSum[i] / fractionCounts[i];
+            float minAlcohol = 100.0f;
+            float maxAlcohol = 0.0f;
+            for (uint16_t j = 0; j < dataPointsCount; j++) {
+                if (dataPoints[j].fraction == fractions[i]) {
+                    if (dataPoints[j].alcohol < minAlcohol) minAlcohol = dataPoints[j].alcohol;
+                    if (dataPoints[j].alcohol > maxAlcohol) maxAlcohol = dataPoints[j].alcohol;
+                }
+            }
+            fracStat["min_alcohol"] = minAlcohol;
+            fracStat["max_alcohol"] = maxAlcohol;
+        } else {
+            fracStat["avg_alcohol"] = 0.0f;
+            fracStat["min_alcohol"] = 0.0f;
+            fracStat["max_alcohol"] = 0.0f;
+        }
+        
+        // Процент времени в этой фракции
+        if (totalActiveTime > 0) {
+            fracStat["time_percent"] = (fractionTimeSpent[i] * 100.0f) / totalActiveTime;
+            fracStat["time_seconds"] = fractionTimeSpent[i] / 1000;
+        } else {
+            fracStat["time_percent"] = 0.0f;
+            fracStat["time_seconds"] = 0;
+        }
+    }
     
     // Массив точек данных
     JsonArray points = doc["data_points"].to<JsonArray>();

@@ -29,6 +29,22 @@ private:
     DisplayMode currentMode;
     String lastError;
 
+    // Переменные для циклического отображения
+    uint8_t cycleIndex;  // 0=крепость, 1=температура, 2=заряд
+    unsigned long lastCycleTime;
+    static const unsigned long CYCLE_INTERVAL = 3000;  // 3 секунды на каждый экран
+    
+    // Сохраненные значения для циклического отображения
+    float savedAlcohol;
+    float savedTemperature;
+    int8_t savedBatteryPercent;
+    
+    // Переменные для предотвращения мерцания
+    unsigned long lastDisplayUpdate;
+    static const unsigned long DISPLAY_UPDATE_INTERVAL = 200;  // Обновлять экран не чаще чем раз в 200мс
+    uint8_t lastDisplayedCycleIndex;  // Последний отображаемый индекс цикла
+    String lastDisplayedText;  // Последний отображаемый текст
+
 public:
     /**
      * @brief Конструктор
@@ -64,8 +80,10 @@ public:
      * @param alcoholPercent Процент алкоголя
      * @param temperature Температура
      * @param isCompensated Применена ли температурная компенсация
+     * @param batteryPercent Процент заряда батареи (0-100, -1 если недоступно)
+     * @param batteryVoltage Напряжение батареи (В, -1 если недоступно)
      */
-    void showMeasurement(float alcoholPercent, float temperature, bool isCompensated = false);
+    void showMeasurement(float alcoholPercent, float temperature, bool isCompensated = false, int8_t batteryPercent = -1, float batteryVoltage = -1.0f);
 
     /**
      * @brief Показать экран калибровки
@@ -105,6 +123,12 @@ public:
      * @param brightness Яркость (0-255)
      */
     void setBrightness(uint8_t brightness);
+
+    /**
+     * @brief Проверить, показывается ли сейчас ошибка
+     * @return true если показывается ошибка
+     */
+    bool isShowingError() const;
 };
 
 #endif // DISPLAY_MANAGER_H

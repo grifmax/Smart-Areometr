@@ -117,6 +117,27 @@ public:
      * @return true если драйвер инициализирован
      */
     bool isInitialized() const { return initialized; }
+    
+    /**
+     * @brief Включить режим power-down для экономии энергии
+     * @param enable true для включения режима энергосбережения
+     */
+    void setPowerDown(bool enable);
+    
+    /**
+     * @brief Получить напряжение дифференциального сигнала
+     * @param channel1 Первый канал
+     * @param channel2 Второй канал
+     * @return Напряжение в вольтах
+     */
+    float readDifferentialVoltage(uint8_t channel1, uint8_t channel2);
+    
+    /**
+     * @brief Преобразовать сырое значение в диапазон 0-65535 (для совместимости)
+     * @param rawValue Сырое 16-битное значение (-32768 до 32767)
+     * @return Значение в диапазоне 0-65535
+     */
+    uint16_t convertToUnsigned(int16_t rawValue) const;
 };
 
 #endif // ADS1115_DRIVER_H

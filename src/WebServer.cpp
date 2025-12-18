@@ -294,12 +294,41 @@ void WebServerManager::setupRoutes() {
         doc["ssid"] = ssid;
         doc["ip"] = deviceIP;
         doc["calibrated"] = calibratedCallback ? calibratedCallback() : false;
+        
+        // Добавляем информацию об ADS1115, если доступна
+        if (ads1115StatusCallback) {
+            String adsStatus = ads1115StatusCallback();
+            JsonDocument adsDoc;
+            if (deserializeJson(adsDoc, adsStatus) == DeserializationError::Ok) {
+                doc["ads1115"] = adsDoc;
+            }
+        }
 
         String response;
         if (serializeJson(doc, response) > 0) {
             request->send(200, "application/json", response);
         } else {
             request->send(500, "application/json", "{\"error\":\"serialization_failed\"}");
+        }
+    });
+    
+    // API: Получить статус ADS1115
+    server->on("/api/ads1115/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (ads1115StatusCallback) {
+            String status = ads1115StatusCallback();
+            request->send(200, "application/json", status);
+        } else {
+            request->send(404, "application/json", "{\"error\":\"ads1115_not_available\"}");
+        }
+    });
+    
+    // API: Получить статус батареи
+    server->on("/api/battery/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getBatteryStatusCallback) {
+            String status = getBatteryStatusCallback();
+            request->send(200, "application/json", status);
+        } else {
+            request->send(404, "application/json", "{\"error\":\"battery_monitor_not_available\"}");
         }
     });
 
@@ -344,6 +373,54 @@ void WebServerManager::setupRoutes() {
             request->send(LittleFS, LOG_FILE, "application/json");
         } else {
             request->send(200, "application/json", "{\"measurements\":[]}");
+        }
+    });
+
+    // API: Получить логи в формате CSV
+    server->on("/api/logs/csv", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (exportLogsCSVCallback) {
+            String csv = exportLogsCSVCallback();
+            request->send(200, "text/csv", csv);
+        } else {
+            request->send(404, "application/json", "{\"error\":\"not_available\"}");
+        }
+    });
+
+    // API: Получить данные логов за период
+    server->on("/api/logs/data", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getLogsDataCallback) {
+            // Парсим параметры запроса
+            unsigned long startTime = 0;
+            unsigned long endTime = 0;
+            
+            if (request->hasParam("start")) {
+                startTime = request->getParam("start")->value().toInt();
+            }
+            if (request->hasParam("end")) {
+                endTime = request->getParam("end")->value().toInt();
+            }
+            
+            // Если параметры не указаны, используем последние 60 минут
+            if (startTime == 0 && endTime == 0) {
+                unsigned long currentTime = millis();
+                startTime = currentTime - (60 * 60 * 1000);  // Последние 60 минут
+                endTime = currentTime;
+            }
+            
+            String json = getLogsDataCallback(startTime, endTime);
+            request->send(200, "application/json", json);
+        } else {
+            request->send(404, "application/json", "{\"error\":\"not_available\"}");
+        }
+    });
+
+    // API: Получить статистику логов
+    server->on("/api/logs/stats", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getLogsStatsCallback) {
+            String json = getLogsStatsCallback();
+            request->send(200, "application/json", json);
+        } else {
+            request->send(404, "application/json", "{\"error\":\"not_available\"}");
         }
     });
 
@@ -680,6 +757,44 @@ void WebServerManager::setupRoutes() {
         }
     });
 
+    // API: Получить данные для графиков сессии (для построения графиков)
+    server->on("/api/session/graph-data", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getSessionStatusCallback) {
+            String sessionStatus = getSessionStatusCallback();
+            JsonDocument sessionDoc;
+            
+            if (deserializeJson(sessionDoc, sessionStatus) == DeserializationError::Ok) {
+                // Извлекаем data_points из статуса сессии
+                JsonDocument responseDoc;
+                responseDoc["session_id"] = sessionDoc["session_id"] | "";
+                responseDoc["session_name"] = sessionDoc["session_name"] | "";
+                
+                // Копируем массив точек данных для графиков
+                if (sessionDoc["data_points"].is<JsonArray>()) {
+                    JsonArray sourcePoints = sessionDoc["data_points"].as<JsonArray>();
+                    JsonArray targetPoints = responseDoc["data_points"].to<JsonArray>();
+                    
+                    for (JsonObject point : sourcePoints) {
+                        JsonObject targetPoint = targetPoints.add<JsonObject>();
+                        targetPoint["timestamp"] = point["timestamp"] | 0;
+                        targetPoint["alcohol"] = point["alcohol"] | 0.0f;
+                        targetPoint["temperature"] = point["temperature"] | 0.0f;
+                        targetPoint["fraction"] = point["fraction"] | "unknown";
+                        targetPoint["stability"] = point["stability"] | 0;
+                    }
+                }
+                
+                String response;
+                serializeJson(responseDoc, response);
+                request->send(200, "application/json", response);
+            } else {
+                request->send(500, "application/json", "{\"error\":\"failed_to_parse_session\"}");
+            }
+        } else {
+            request->send(500, "application/json", "{\"error\":\"callback_not_set\"}");
+        }
+    });
+
     // === WiFi API ===
     // API: Сканирование WiFi сетей
     server->on("/api/wifi/scan", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -872,6 +987,153 @@ void WebServerManager::setupRoutes() {
         request->send(200, "application/json", json);
     });
 
+    // === Level Detector API ===
+    server->on("/api/receivers/level/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getLevelStatusCallback) {
+            String json = getLevelStatusCallback();
+            request->send(200, "application/json", json);
+        } else {
+            request->send(404, "application/json", "{\"error\":\"not_available\"}");
+        }
+    });
+
+    server->on("/api/receivers/level/voltage", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getLevelVoltageCallback) {
+            float voltage = getLevelVoltageCallback();
+            JsonDocument doc;
+            doc["voltage"] = voltage;
+            String json;
+            serializeJson(doc, json);
+            request->send(200, "application/json", json);
+        } else {
+            request->send(404, "application/json", "{\"error\":\"not_available\"}");
+        }
+    });
+
+    server->on("/api/receivers/level/threshold", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getLevelStatusCallback) {
+            String json = getLevelStatusCallback();
+            JsonDocument doc;
+            if (deserializeJson(doc, json) == DeserializationError::Ok && doc.containsKey("threshold")) {
+                JsonDocument response;
+                response["threshold"] = doc["threshold"];
+                String responseJson;
+                serializeJson(response, responseJson);
+                request->send(200, "application/json", responseJson);
+            } else {
+                request->send(500, "application/json", "{\"error\":\"invalid_status\"}");
+            }
+        } else {
+            request->send(404, "application/json", "{\"error\":\"not_available\"}");
+        }
+    });
+
+    server->on("/api/receivers/level/threshold", HTTP_POST,
+        [](AsyncWebServerRequest *request) {},
+        nullptr,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (total > 256) {
+                request->send(413, "application/json", "{\"error\":\"payload_too_large\"}");
+                return;
+            }
+            
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, (const char*)data, len);
+            
+            if (error || len == 0 || !doc.containsKey("threshold")) {
+                request->send(400, "application/json", "{\"error\":\"invalid_json\"}");
+                return;
+            }
+            
+            float threshold = doc["threshold"];
+            if (setLevelThresholdCallback && setLevelThresholdCallback(threshold)) {
+                request->send(200, "application/json", "{\"status\":\"success\"}");
+            } else {
+                request->send(400, "application/json", "{\"error\":\"invalid_threshold\"}");
+            }
+        }
+    );
+
+    server->on("/api/receivers/level/calibrate/empty", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (calibrateLevelEmptyCallback) {
+            calibrateLevelEmptyCallback();
+            request->send(200, "application/json", "{\"status\":\"success\"}");
+        } else {
+            request->send(404, "application/json", "{\"error\":\"not_available\"}");
+        }
+    });
+
+    server->on("/api/receivers/level/calibrate/full", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        if (calibrateLevelFullCallback) {
+            calibrateLevelFullCallback();
+            request->send(200, "application/json", "{\"status\":\"success\"}");
+        } else {
+            request->send(404, "application/json", "{\"error\":\"not_available\"}");
+        }
+    });
+
+    // === Receiver Controller API ===
+    server->on("/api/receivers/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getReceiverStatusCallback) {
+            String json = getReceiverStatusCallback();
+            request->send(200, "application/json", json);
+        } else {
+            request->send(404, "application/json", "{\"error\":\"not_available\"}");
+        }
+    });
+
+    server->on("/api/receivers/switch", HTTP_POST,
+        [](AsyncWebServerRequest *request) {},
+        nullptr,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (total > 256) {
+                request->send(413, "application/json", "{\"error\":\"payload_too_large\"}");
+                return;
+            }
+            
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, (const char*)data, len);
+            
+            if (error || len == 0 || !doc.containsKey("receiver_id")) {
+                request->send(400, "application/json", "{\"error\":\"invalid_json\"}");
+                return;
+            }
+            
+            uint8_t receiverId = doc["receiver_id"];
+            if (switchReceiverCallback && switchReceiverCallback(receiverId)) {
+                request->send(200, "application/json", "{\"status\":\"success\"}");
+            } else {
+                request->send(400, "application/json", "{\"error\":\"invalid_receiver_id\"}");
+            }
+        }
+    );
+
+    server->on("/api/receivers/overflow/action", HTTP_POST,
+        [](AsyncWebServerRequest *request) {},
+        nullptr,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (total > 256) {
+                request->send(413, "application/json", "{\"error\":\"payload_too_large\"}");
+                return;
+            }
+            
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, (const char*)data, len);
+            
+            if (error || len == 0 || !doc.containsKey("action")) {
+                request->send(400, "application/json", "{\"error\":\"invalid_json\"}");
+                return;
+            }
+            
+            String action = doc["action"];
+            if (setOverflowActionCallback && setOverflowActionCallback(action)) {
+                request->send(200, "application/json", "{\"status\":\"success\"}");
+            } else {
+                request->send(400, "application/json", "{\"error\":\"invalid_action\"}");
+            }
+        }
+    );
+
     // 404 handler
     server->onNotFound([](AsyncWebServerRequest *request) {
         request->send(404, "text/plain", "Not Found");
@@ -936,6 +1198,35 @@ String WebServerManager::generateMeasurementJSON() {
             }
         }
     }
+    
+    // Добавляем информацию об ADS1115, если доступна
+    if (ads1115StatusCallback) {
+        String adsStatus = ads1115StatusCallback();
+        JsonDocument adsDoc;
+        if (deserializeJson(adsDoc, adsStatus) == DeserializationError::Ok && adsDoc["enabled"].as<bool>()) {
+            doc["adc_type"] = "ads1115";
+            doc["adc_resolution"] = adsDoc["resolution"].as<uint8_t>();
+            if (adsDoc["voltage"].is<float>()) {
+                doc["signal_voltage"] = adsDoc["voltage"].as<float>();
+                doc["ads1115_voltage"] = adsDoc["voltage"].as<float>();
+            }
+        } else {
+            doc["adc_type"] = "internal";
+            doc["adc_resolution"] = 12;
+        }
+    } else {
+        doc["adc_type"] = "internal";
+        doc["adc_resolution"] = 12;
+    }
+    
+    // Добавляем информацию о батарее, если доступна
+    if (getBatteryStatusCallback) {
+        String batteryStatus = getBatteryStatusCallback();
+        JsonDocument batteryDoc;
+        if (deserializeJson(batteryDoc, batteryStatus) == DeserializationError::Ok) {
+            doc["battery"] = batteryDoc;
+        }
+    }
 
     String response;
     serializeJson(doc, response);
@@ -976,6 +1267,10 @@ void WebServerManager::setRawValueCallback(std::function<uint16_t()> callback) {
 
 void WebServerManager::setStabilityCallback(std::function<uint8_t()> callback) {
     stabilityCallback = callback;
+}
+
+void WebServerManager::setADS1115StatusCallback(std::function<String()> callback) {
+    ads1115StatusCallback = callback;
 }
 
 void WebServerManager::setAddCalibrationPointCallback(std::function<bool(float, float)> callback) {
@@ -1064,6 +1359,54 @@ void WebServerManager::setExportSessionCSVCallback(std::function<String()> callb
 
 void WebServerManager::setGetSessionsListCallback(std::function<String()> callback) {
     getSessionsListCallback = callback;
+}
+
+void WebServerManager::setExportLogsCSVCallback(std::function<String()> callback) {
+    exportLogsCSVCallback = callback;
+}
+
+void WebServerManager::setGetLogsDataCallback(std::function<String(unsigned long, unsigned long)> callback) {
+    getLogsDataCallback = callback;
+}
+
+void WebServerManager::setGetLogsStatsCallback(std::function<String()> callback) {
+    getLogsStatsCallback = callback;
+}
+
+void WebServerManager::setGetBatteryStatusCallback(std::function<String()> callback) {
+    getBatteryStatusCallback = callback;
+}
+
+void WebServerManager::setGetLevelStatusCallback(std::function<String()> callback) {
+    getLevelStatusCallback = callback;
+}
+
+void WebServerManager::setGetLevelVoltageCallback(std::function<float()> callback) {
+    getLevelVoltageCallback = callback;
+}
+
+void WebServerManager::setSetLevelThresholdCallback(std::function<bool(float)> callback) {
+    setLevelThresholdCallback = callback;
+}
+
+void WebServerManager::setCalibrateLevelEmptyCallback(std::function<void()> callback) {
+    calibrateLevelEmptyCallback = callback;
+}
+
+void WebServerManager::setCalibrateLevelFullCallback(std::function<void()> callback) {
+    calibrateLevelFullCallback = callback;
+}
+
+void WebServerManager::setGetReceiverStatusCallback(std::function<String()> callback) {
+    getReceiverStatusCallback = callback;
+}
+
+void WebServerManager::setSwitchReceiverCallback(std::function<bool(uint8_t)> callback) {
+    switchReceiverCallback = callback;
+}
+
+void WebServerManager::setSetOverflowActionCallback(std::function<bool(const String&)> callback) {
+    setOverflowActionCallback = callback;
 }
 
 void WebServerManager::handle() {

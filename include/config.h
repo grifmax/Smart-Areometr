@@ -105,4 +105,20 @@
 #define BATTERY_UPDATE_INTERVAL 30000  // Интервал обновления (мс) - 30 секунд
 #define BATTERY_DIVIDER_RATIO 2.0f  // Коэффициент делителя напряжения (если используется)
 
+// === Receiver Level Detection (ADS1115) ===
+#define RECEIVER_LEVEL_DETECTION_ENABLED true
+#define ADS1115_LEVEL_CHANNEL 2  // AIN2 для детекции уровня жидкости
+#define LEVEL_DETECTION_THRESHOLD 0.5f  // Пороговое напряжение (В) для срабатывания переполнения
+#define LEVEL_DETECTION_DEBOUNCE_MS 1000  // Задержка перед срабатыванием (мс) для устранения ложных срабатываний
+#define LEVEL_CHECK_INTERVAL 5000  // Интервал проверки уровня (мс)
+#define LEVEL_FILTER_SIZE 5  // Размер фильтра скользящего среднего для стабилизации показаний
+
+// === Receiver Control Configuration ===
+#define RECEIVER_CONTROL_ENABLED true
+#define RECEIVER_COUNT 3  // Количество приемников (головы, тело, хвосты)
+#define RECEIVER_1_PIN GPIO_NUM_7  // GPIO для управления приемником 1 (головы)
+#define RECEIVER_2_PIN GPIO_NUM_8  // GPIO для управления приемником 2 (тело)
+#define RECEIVER_3_PIN GPIO_NUM_9  // GPIO для управления приемником 3 (хвосты)
+#define RECEIVER_MAX_VOLUME_ML 1000.0f  // Максимальный объем приемника (мл)
+
 #endif // CONFIG_H

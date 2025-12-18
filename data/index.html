@@ -27,6 +27,7 @@
                 <a href="/" class="nav-link active">Главная</a>
                 <a href="/calibration.html" class="nav-link">Калибровка</a>
                 <a href="/fractions.html" class="nav-link">Фракции</a>
+                <a href="/receivers.html" class="nav-link">Приемники</a>
                 <a href="/distillation.html" class="nav-link">Сессии</a>
                 <a href="/mqtt.html" class="nav-link">MQTT</a>
                 <a href="/settings.html" class="nav-link">Настройки</a>
@@ -163,6 +164,23 @@
                         <div class="info-item">
                             <span class="info-label">IP:</span>
                             <span class="info-value" id="ipAddress">--</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">АЦП:</span>
+                            <span class="info-value" id="adcType">--</span>
+                        </div>
+                        <div class="info-item" id="ads1115InfoItem" style="display: none;">
+                            <span class="info-label">ADS1115:</span>
+                            <span class="info-value" id="ads1115Status">--</span>
+                        </div>
+                        <div class="info-item" id="batteryWidget" style="display: none;">
+                            <span class="info-label">Батарея:</span>
+                            <span class="info-value">
+                                <span class="battery-icon" style="margin-right: 5px;">🔋</span>
+                                <span id="batteryPercent">--</span>
+                                (<span id="batteryVoltage">--</span>)
+                                <span id="batteryStatus" style="margin-left: 5px; font-size: 0.9em;">--</span>
+                            </span>
                         </div>
                     </div>
                 </div>

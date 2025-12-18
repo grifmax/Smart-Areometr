@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initCharts();
     loadStatus();
     loadMeasurement();
+    loadBatteryStatus();  // Загружаем статус батареи
     startAutoUpdate();
 });
 
@@ -174,11 +175,33 @@ function updateMeasurementDisplay(data) {
         calibrationStatus.style.color = data.calibrated ? '#4CAF50' : '#F44336';
     }
 
+    // Информация об ADC (ADS1115 или встроенный)
+    if (data.adc_type) {
+        const adcInfoElement = document.getElementById('adcInfo');
+        if (adcInfoElement) {
+            if (data.adc_type === 'ads1115') {
+                adcInfoElement.textContent = `ADS1115 (${data.adc_resolution || 16}-bit)`;
+                adcInfoElement.style.color = '#4CAF50';
+                // Показываем напряжение сигнала, если доступно
+                if (data.signal_voltage !== undefined) {
+                    const voltageInfo = document.getElementById('signalVoltage');
+                    if (voltageInfo) {
+                        voltageInfo.textContent = `${data.signal_voltage.toFixed(4)}V`;
+                        voltageInfo.style.display = 'inline';
+                    }
+                }
+            } else {
+                adcInfoElement.textContent = `Встроенный (${data.adc_resolution || 12}-bit)`;
+                adcInfoElement.style.color = '#9E9E9E';
+            }
+        }
+    }
+
     // Фракция
     const fractionItem = document.getElementById('fractionItem');
     const fractionValue = document.getElementById('fractionValue');
     const fractionIcon = document.getElementById('fractionIcon');
-    
+
     if (data.fraction) {
         if (fractionItem) fractionItem.style.display = 'flex';
         
@@ -215,6 +238,87 @@ function updateMeasurementDisplay(data) {
     const lastUpdate = document.getElementById('lastUpdate');
     if (lastUpdate) {
         lastUpdate.textContent = new Date().toLocaleTimeString();
+    }
+    
+    // Информация об АЦП (если есть в данных измерения)
+    if (data.adc_type) {
+        const adcTypeElement = document.getElementById('adcType');
+        if (adcTypeElement) {
+            if (data.adc_type === 'ads1115') {
+                adcTypeElement.textContent = `ADS1115 (${data.adc_resolution || 16}-bit)`;
+                adcTypeElement.style.color = '#4CAF50';
+            } else {
+                adcTypeElement.textContent = `Встроенный (${data.adc_resolution || 12}-bit)`;
+                adcTypeElement.style.color = '#9E9E9E';
+            }
+        }
+    }
+}
+
+// === Загрузка статуса батареи ===
+async function loadBatteryStatus() {
+    try {
+        const response = await fetch(`${API_BASE}/api/battery/status`);
+        if (!response.ok) return;  // Батарея не доступна
+        
+        const data = await response.json();
+        updateBatteryDisplay(data);
+    } catch (error) {
+        // Игнорируем ошибки - батарея может быть недоступна
+    }
+}
+
+// === Обновление отображения батареи ===
+function updateBatteryDisplay(data) {
+    const batteryWidget = document.getElementById('batteryWidget');
+    const batteryPercent = document.getElementById('batteryPercent');
+    const batteryVoltage = document.getElementById('batteryVoltage');
+    const batteryStatus = document.getElementById('batteryStatus');
+    
+    if (batteryWidget) {
+        batteryWidget.style.display = 'flex';
+        
+        if (batteryPercent) {
+            batteryPercent.textContent = `${data.percent || 0}%`;
+            // Обновляем иконку батареи в зависимости от уровня заряда
+            const batteryIcon = batteryWidget.querySelector('.battery-icon');
+            if (batteryIcon) {
+                const percent = data.percent || 0;
+                if (percent <= 10) {
+                    batteryIcon.textContent = '🔴'; // Критический
+                    batteryIcon.style.color = '#F44336';
+                } else if (percent <= 20) {
+                    batteryIcon.textContent = '🟠'; // Низкий
+                    batteryIcon.style.color = '#FF9800';
+                } else if (percent <= 50) {
+                    batteryIcon.textContent = '🟡'; // Средний
+                    batteryIcon.style.color = '#FFC107';
+                } else {
+                    batteryIcon.textContent = '🟢'; // Нормальный
+                    batteryIcon.style.color = '#4CAF50';
+                }
+            }
+        }
+        
+        if (batteryVoltage) {
+            batteryVoltage.textContent = `${(data.voltage || 0).toFixed(2)}V`;
+        }
+        
+        if (batteryStatus) {
+            if (data.charging) {
+                batteryStatus.textContent = 'Зарядка';
+                batteryStatus.style.color = '#2196F3';
+            } else if (data.low_battery) {
+                batteryStatus.textContent = 'Низкий заряд';
+                batteryStatus.style.color = '#FF9800';
+            } else if (data.critical) {
+                batteryStatus.textContent = 'Критический';
+                batteryStatus.style.color = '#F44336';
+            } else {
+                batteryStatus.textContent = 'Норма';
+                batteryStatus.style.color = '#4CAF50';
+            }
+        }
     }
 }
 
@@ -269,6 +373,38 @@ function updateSystemInfo(data) {
         const element = document.getElementById(id);
         if (element) element.textContent = value;
     }
+    
+    // Обновление информации об АЦП
+    const adcTypeElement = document.getElementById('adcType');
+    const ads1115InfoItem = document.getElementById('ads1115InfoItem');
+    const ads1115StatusElement = document.getElementById('ads1115Status');
+    
+    if (data.ads1115) {
+        const ads1115 = data.ads1115;
+        if (ads1115.enabled && ads1115.initialized && ads1115.connected) {
+            if (adcTypeElement) {
+                adcTypeElement.textContent = `ADS1115 (${ads1115.resolution}-bit)`;
+                adcTypeElement.style.color = '#4CAF50';
+            }
+            if (ads1115InfoItem) ads1115InfoItem.style.display = 'flex';
+            if (ads1115StatusElement) {
+                ads1115StatusElement.textContent = `Подключен (${ads1115.data_rate} SPS)`;
+                ads1115StatusElement.style.color = '#4CAF50';
+            }
+        } else {
+            if (adcTypeElement) {
+                adcTypeElement.textContent = 'Встроенный (12-bit)';
+                adcTypeElement.style.color = '#9E9E9E';
+            }
+            if (ads1115InfoItem) ads1115InfoItem.style.display = 'none';
+        }
+    } else {
+        if (adcTypeElement) {
+            adcTypeElement.textContent = 'Встроенный (12-bit)';
+            adcTypeElement.style.color = '#9E9E9E';
+        }
+        if (ads1115InfoItem) ads1115InfoItem.style.display = 'none';
+    }
 }
 
 // === Обновление статуса подключения ===
@@ -295,6 +431,13 @@ function startAutoUpdate() {
 
     updateTimer = setInterval(() => {
         loadMeasurement();
+        // Обновляем батарею реже - каждые 30 секунд (15 интервалов по 2 секунды)
+        if (!window.batteryUpdateCounter) window.batteryUpdateCounter = 0;
+        window.batteryUpdateCounter++;
+        if (window.batteryUpdateCounter >= 15) {
+            loadBatteryStatus();
+            window.batteryUpdateCounter = 0;
+        }
     }, UPDATE_INTERVAL);
 }
 
