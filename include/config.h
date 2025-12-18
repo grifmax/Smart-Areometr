@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 // Версия прошивки
-#define FIRMWARE_VERSION "2.1.4"
+#define FIRMWARE_VERSION "2.1.5"
 
 // Пины подключения OLED дисплея (I2C)
 // Для модулей ESP32-C3 с встроенным OLED обычно используются GPIO5 и GPIO6
@@ -94,5 +94,15 @@
 // Home Assistant Discovery
 #define MQTT_HA_DISCOVERY_ENABLED true
 #define MQTT_HA_DISCOVERY_PREFIX "homeassistant"
+
+// === Battery Monitor Configuration ===
+#define BATTERY_MONITOR_ENABLED true
+#define BATTERY_ADC_PIN GPIO_NUM_1  // Аналоговый пин для измерения напряжения батареи
+#define BATTERY_VOLTAGE_MIN 3.0f    // Минимальное напряжение (В) - полный разряд
+#define BATTERY_VOLTAGE_MAX 4.2f    // Максимальное напряжение (В) - полный заряд
+#define BATTERY_LOW_THRESHOLD 20    // Порог низкого заряда (%)
+#define BATTERY_CRITICAL_THRESHOLD 10  // Порог критического заряда (%)
+#define BATTERY_UPDATE_INTERVAL 30000  // Интервал обновления (мс) - 30 секунд
+#define BATTERY_DIVIDER_RATIO 2.0f  // Коэффициент делителя напряжения (если используется)
 
 #endif // CONFIG_H
