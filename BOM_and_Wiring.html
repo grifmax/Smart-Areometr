@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Areometr - BOM и Схемы</title>
+    <style>
+        @media print {
+            body { margin: 0; }
+            @page { size: A4; margin: 1.5cm; }
+            h1, h2, h3 { page-break-after: avoid; }
+            table { page-break-inside: avoid; }
+            pre { page-break-inside: avoid; }
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+        }
+        
+        .header h1 { margin: 0; font-size: 36px; }
+        .header p { margin: 10px 0; font-size: 16px; opacity: 0.9; }
+        
+        h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; margin-top: 30px; }
+        h2 { color: #34495e; border-bottom: 2px solid #95a5a6; padding-bottom: 8px; margin-top: 25px; }
+        h3 { color: #555; margin-top: 20px; }
+        
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+            font-size: 13px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        th {
+            background-color: #3498db;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        tr:hover { background-color: #f5f5f5; }
+        
+        pre {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            white-space: pre;
+        }
+        
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        
+        .note {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .price-box {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .price-box table { color: white; box-shadow: none; }
+        .price-box th { background-color: rgba(0,0,0,0.3); }
+        .price-box td { border-color: rgba(255,255,255,0.3); }
+        
+        footer {
+            text-align: center;
+            color: #7f8c8d;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid #ecf0f1;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📋 Smart Areometr</h1>
+        <p><strong>BOM (Bill of Materials) и Полная Схема Подключения</strong></p>
+        <p>Версия 2.1.14 | 2025-01-20</p>
+    </div>
+
+    <h1 id="bom">📋 СПИСОК КОМПОНЕНТОВ (BOM)</h1>
+
+    <h2>🔴 ОБЯЗАТЕЛЬНЫЕ КОМПОНЕНТЫ</h2>
+    <table>
+        <tr>
+            <th>№</th>
+            <th>Компонент</th>
+            <th>Спецификация</th>
+            <th>Кол-во</th>
+            <th>Цена</th>
+            <th>Примечание</th>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td><strong>ESP32-C3 OLED DevKit</strong></td>
+            <td>RISC-V 160MHz, 4MB Flash, OLED 0.42" (72x40)</td>
+            <td>1</td>
+            <td>~800₽</td>
+            <td>Основная плата с дисплеем</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td><strong>DS18B20</strong></td>
+            <td>Цифровой датчик температуры, -55°C...+125°C, ±0.5°C</td>
+            <td>1</td>
+            <td>~100₽</td>
+            <td>Водонепроницаемая версия</td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td><strong>Резистор 4.7кΩ</strong></td>
+            <td>1/4W, 5%, для подтяжки OneWire</td>
+            <td>1</td>
+            <td>~5₽</td>
+            <td>Если DS18B20 без встроенного</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td><strong>Электроды датчика</strong></td>
+            <td>Нержавеющая сталь AISI 304/316 (30x10x0.5мм)</td>
+            <td>2</td>
+            <td>~50₽</td>
+            <td>Для измерения крепости</td>
+        </tr>
+        <tr>
+            <td>5</td>
+            <td><strong>Кнопки тактовые</strong></td>
+            <td>6x6x5мм, 4-pin</td>
+            <td>2</td>
+            <td>~20₽</td>
+            <td>Калибровка + Измерение</td>
+        </tr>
+        <tr>
+            <td>6</td>
+            <td><strong>Провода</strong></td>
+            <td>22-24 AWG, многожильные</td>
+            <td>набор</td>
+            <td>~50₽</td>
+            <td>Разноцветные</td>
+        </tr>
+        <tr>
+            <td>7</td>
+            <td><strong>Термоусадка</strong></td>
+            <td>2-5мм, набор</td>
+            <td>набор</td>
+            <td>~50₽</td>
+            <td>Изоляция</td>
+        </tr>
+    </table>
+    <p><strong>Итого обязательные:</strong> ~1075₽</p>
+
+    <h2>⭐ РЕКОМЕНДУЕМЫЕ КОМПОНЕНТЫ</h2>
+    <div class="note">
+        <strong>⚠️ ADS1115 НАСТОЯТЕЛЬНО РЕКОМЕНДУЕТСЯ!</strong><br>
+        Повышает точность измерений в 4 раза: с ±0.5-1% до ±0.1-0.2%<br>
+        Стабильность: с 70-85% до 90-98%
+    </div>
+    <table>
+        <tr>
+            <th>№</th>
+            <th>Компонент</th>
+            <th>Спецификация</th>
+            <th>Кол-во</th>
+            <th>Цена</th>
+        </tr>
+        <tr>
+            <td>8</td>
+            <td><strong>ADS1115 Module</strong></td>
+            <td>16-bit ADC, I2C, адрес 0x48</td>
+            <td>1</td>
+            <td>~150-200₽</td>
+        </tr>
+        <tr>
+            <td>9</td>
+            <td><strong>Pin Headers</strong></td>
+            <td>2.54mm, мама/папа</td>
+            <td>набор</td>
+            <td>~30₽</td>
+        </tr>
+    </table>
+    <p><strong>Итого с ADS1115:</strong> ~1255-1305₽</p>
+
+    <h2>🔋 КОМПОНЕНТЫ ДЛЯ АВТОНОМНОСТИ</h2>
+    <table>
+        <tr>
+            <th>№</th>
+            <th>Компонент</th>
+            <th>Спецификация</th>
+            <th>Кол-во</th>
+            <th>Цена</th>
+        </tr>
+        <tr>
+            <td>10</td>
+            <td><strong>Li-Ion 18650</strong></td>
+            <td>3.7V, 2000-3000mAh, с защитой</td>
+            <td>1</td>
+            <td>~200-300₽</td>
+        </tr>
+        <tr>
+            <td>11</td>
+            <td><strong>TP4056</strong></td>
+            <td>Зарядка Li-Ion, Type-C, с защитой DW01A</td>
+            <td>1</td>
+            <td>~50-80₽</td>
+        </tr>
+        <tr>
+            <td>12</td>
+            <td><strong>Резисторы 10кОм</strong></td>
+            <td>1/4W, 5%</td>
+            <td>2</td>
+            <td>~10₽</td>
+        </tr>
+        <tr>
+            <td>13</td>
+            <td><strong>Выключатель</strong></td>
+            <td>SPST, 3A</td>
+            <td>1</td>
+            <td>~20₽</td>
+        </tr>
+        <tr>
+            <td>14</td>
+            <td><strong>USB-C розетка</strong></td>
+            <td>Панельный монтаж</td>
+            <td>1</td>
+            <td>~50₽</td>
+        </tr>
+        <tr>
+            <td>15</td>
+            <td><strong>Холдер 18650</strong></td>
+            <td>Пружинный контакт</td>
+            <td>1</td>
+            <td>~30₽</td>
+        </tr>
+    </table>
+    <p><strong>Время работы:</strong> 2000mAh / 150mA ≈ <strong>13 часов</strong> (с Deep Sleep: до 3-5 дней)</p>
+    <p><strong>Итого автономная:</strong> +360-490₽</p>
+
+    <h2>🎛️ КОМПОНЕНТЫ ДЛЯ АВТОМАТИЗАЦИИ</h2>
+    <table>
+        <tr>
+            <th>№</th>
+            <th>Компонент</th>
+            <th>Спецификация</th>
+            <th>Кол-во</th>
+            <th>Цена</th>
+        </tr>
+        <tr>
+            <td>16</td>
+            <td><strong>Соленоидные клапаны</strong></td>
+            <td>12V DC, 1/2", нормально закрытые</td>
+            <td>3</td>
+            <td>~300₽ × 3</td>
+        </tr>
+        <tr>
+            <td>17</td>
+            <td><strong>Релейный модуль</strong></td>
+            <td>3-channel, 5V/12V, optoisolated</td>
+            <td>1</td>
+            <td>~150₽</td>
+        </tr>
+        <tr>
+            <td>18</td>
+            <td><strong>БП 12V 2A</strong></td>
+            <td>Импульсный, стабилизированный</td>
+            <td>1</td>
+            <td>~300₽</td>
+        </tr>
+        <tr>
+            <td>19</td>
+            <td><strong>Электроды детектора</strong></td>
+            <td>Нержавеющая сталь (20x5мм)</td>
+            <td>2</td>
+            <td>~30₽</td>
+        </tr>
+        <tr>
+            <td>20</td>
+            <td><strong>Диоды 1N4007</strong></td>
+            <td>Защита от индуктивности</td>
+            <td>3</td>
+            <td>~15₽</td>
+        </tr>
+    </table>
+    <p><strong>Итого автоматизация:</strong> ~1365₽</p>
+
+    <div class="price-box">
+        <h2 style="color: white; border: none;">💰 СВОДНАЯ СТОИМОСТЬ</h2>
+        <table>
+            <tr>
+                <th>Конфигурация</th>
+                <th>Состав</th>
+                <th>Цена</th>
+            </tr>
+            <tr>
+                <td><strong>Минимальная</strong></td>
+                <td>Без ADS1115, без батареи</td>
+                <td>~1075₽</td>
+            </tr>
+            <tr>
+                <td><strong>Базовая ⭐</strong></td>
+                <td>С ADS1115 (рекомендуется)</td>
+                <td>~1255-1305₽</td>
+            </tr>
+            <tr>
+                <td><strong>Автономная</strong></td>
+                <td>Базовая + батарея</td>
+                <td>~1615-1795₽</td>
+            </tr>
+            <tr>
+                <td><strong>Автоматизированная</strong></td>
+                <td>Базовая + приемники</td>
+                <td>~2620-2670₽</td>
+            </tr>
+            <tr>
+                <td><strong>Максимальная</strong></td>
+                <td>Всё + корпус + доп. датчики</td>
+                <td>~4500-5000₽</td>
+            </tr>
+        </table>
+    </div>
+
+    <h1>🔌 СХЕМЫ ПОДКЛЮЧЕНИЯ</h1>
+
+    <h2>СХЕМА 1: БАЗОВАЯ (без ADS1115)</h2>
+    <pre>
+┌─────────────────────────────────────────────────────────────────┐
+│                         ESP32-C3 DevKit                         │
+│                      (с встроенным OLED 0.42")                  │
+└────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬──────┬────┘
+     │     │     │     │     │     │     │     │     │      │
+    GND  3.3V  GPIO2 GPIO3 GPIO4 GPIO5 GPIO6 GPIO10 GPIO1  5V
+     │     │     │     │     │     │     │     │      │      │
+     │     │     │     └──[BTN]──┘ │     │     │      │      │
+     │     │     │    CAL    MEAS  │     │     │      │      │
+     │     │     │     │      │    │     │     │      │      │
+     │     │     │    GND    GND OLED   OLED   │      │      │
+     │     │     │                 SDA   SCL   │      │      │
+     │     │   [Емкостный                    DS18B20  │      │
+     │     │    датчик]                        │      │      │
+     │     │     │                       [R 4.7kΩ]    │      │
+     │     └─────┼───────────────────────┘      │      │      │
+     │      Электрод 1                         VCC    │      │
+     │           │                              │      │      │
+     └───────────┼──────────────────────────────┴──────┴──────┘
+            Электрод 2
+                 │
+                GND
+    </pre>
+    <p><strong>Точность:</strong> ±0.5-1%, стабильность 70-85%</p>
+
+    <h2>СХЕМА 2: РЕКОМЕНДУЕМАЯ (с ADS1115) ⭐</h2>
+    <pre>
+┌──────────────────────────────────────────────────────────────────┐
+│                           ESP32-C3 DevKit                        │
+│                        (с встроенным OLED 0.42")                 │
+└────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬──────┬─────┘
+     │     │     │     │     │     │     │     │     │      │
+    GND  3.3V  (NC) GPIO3 GPIO4 GPIO5 GPIO6 GPIO10 GPIO1  5V
+     │     │           │     │     │     │     │      │      │
+     │     │         [BTN] [BTN] SDA   SCL    │      │      │
+     │     │          CAL  MEAS  │     │     │      │      │
+     │     │                     │     │     │      │      │
+     │     │              ┌──────┴─────┴─────┴──┐   │      │
+     │     │              │   ADS1115 Module   │   │      │
+     │     │              │   16-bit ADC       │   │      │
+     │     │              │   I2C 0x48         │   │      │
+     │     │              │                     │   │      │
+     │     │              │ VDD GND SDA SCL ADDR│   │      │
+     │     └──────────────┤ 3.3V GND │  │  GND │   │      │
+     │                    │  AIN0 AIN1 AIN2 AIN3│   │      │
+     │                    └───┬───┬───┬────┬────┘   │      │
+     │                        │   │   │    │        │      │
+     │    Емкостной датчик    │   │   │    │        │      │
+     │    ┌──────────┐        │   │   │    │        │      │
+     │    │Электрод 1│────────┘   │   │    │        │      │
+     │    │          │            │   │    │        │      │
+     │    │  5-10mm  │            │   │    │        │      │
+     │    │          │            │   │    │        │      │
+     │    │Электрод 2│────────────┘   │    │        │      │
+     │    └──────────┘                │    │        │      │
+     │                                │    │        │      │
+     │    Детектор переполнения       │    │        │      │
+     │    ┌──────────┐                │    │        │      │
+     │    │Верхний   │────────────────┘    │        │      │
+     │    │электрод  │                     │        │      │
+     │    │          │                     │        │      │
+     │    │Нижний    │─────────────────────┘        │      │
+     │    │электрод  │                              │      │
+     │    └──────────┘                        DS18B20      │
+     │                                              │      │
+     └──────────────────────────────────────────────┼──────┘
+                                                    │
+                                              [R 4.7kΩ]
+                                                    │
+                                                  3.3V
+    </pre>
+
+    <div class="note">
+        <strong>✅ Преимущества ADS1115:</strong><br>
+        • 16-битное разрешение (65536 vs 4096 уровней)<br>
+        • Точность ±0.1-0.2% vs ±0.5-1%<br>
+        • Стабильность 90-98% vs 70-85%<br>
+        • 4 канала для расширения<br>
+        • Дифференциальный режим (подавление помех)
+    </div>
+
+    <h2>СХЕМА 3: АВТОНОМНАЯ (с батареей)</h2>
+    <pre>
+         USB-C (зарядка)
+              │
+              ▼
+       ┌──────────────┐
+       │   TP4056     │  LED: 🔴 зарядка, 🔵 готово
+       │  Зарядный    │
+       │   модуль     │
+       └──────┬───────┘
+              │
+              ▼
+       ┌──────────────┐
+       │  Li-Ion      │
+       │  18650       │  Время работы: ~13 часов
+       │  3.7V        │  (Deep Sleep: до 5 дней)
+       │  2000mAh     │
+       └──────┬───────┘
+              │
+       ┌──────┴───────┐
+       │   [Switch]   │  Выключатель питания
+       └──────┬───────┘
+              │
+       ┌──────┴─────────────────┐
+       │  VIN → ESP32-C3        │
+       │                        │
+       │  Делитель напряжения:  │
+       │  ┌──[R1 10kΩ]──┐       │
+       │  │             │       │
+       │  ├─────────────┴──► GPIO1 (мониторинг)
+       │  │             │       │
+       │  └──[R2 10kΩ]──┘       │
+       │         │              │
+       │        GND             │
+       └────────────────────────┘
+    </pre>
+    <p><strong>Формула заряда:</strong> Battery_% = (V_bat - 3.0V) / (4.2V - 3.0V) × 100%</p>
+
+    <h2>СХЕМА 4: АВТОМАТИЗАЦИЯ (приемники)</h2>
+    <pre>
+ESP32-C3:
+  GPIO7 ──► Реле 1 ──► Клапан 1 (Головы)     ─┐
+  GPIO8 ──► Реле 2 ──► Клапан 2 (Тело)       ├─► 12V DC
+  GPIO9 ──► Реле 3 ──► Клапан 3 (Хвосты)     ─┘
+
+Детальная схема одного клапана:
+
+                           ┌─── +12V
+                           │
+    ESP32-C3               │    Релейный модуль
+     GPIO7                 │      ┌──────────┐
+       │                   │      │  Реле 1  │
+       ├───[1kΩ]───────────┼──────┤ IN1  COM │
+       │                   │      │      NO  │────┐
+      GND                  │      └──────────┘    │
+                           │                      │
+                           │      Соленоид        │
+                           │      ┌─────────┐     │
+                           └──────┤ Coil (+)│◄────┘
+                                  │         │
+                                  │ [Diode] │  ← 1N4007
+                                  │ 1N4007  │     (защита)
+                                  └────┬────┘
+                                       │
+                                      GND
+    </pre>
+
+    <div class="warning">
+        <strong>⚠️ ВАЖНО:</strong> Диод 1N4007 обязателен для защиты от обратной ЭДС!<br>
+        Без него реле и ESP32-C3 могут выйти из строя.
+    </div>
+
+    <h1>🔧 ТАБЛИЦА ПОДКЛЮЧЕНИЯ ПИНОВ</h1>
+    <table>
+        <tr>
+            <th>Функция</th>
+            <th>GPIO</th>
+            <th>Подключение</th>
+            <th>Примечание</th>
+        </tr>
+        <tr>
+            <td><strong>OLED SDA</strong></td>
+            <td>GPIO5</td>
+            <td>I2C шина</td>
+            <td>Встроенный дисплей</td>
+        </tr>
+        <tr>
+            <td><strong>OLED SCL</strong></td>
+            <td>GPIO6</td>
+            <td>I2C шина</td>
+            <td>Встроенный дисплей</td>
+        </tr>
+        <tr>
+            <td><strong>Touch</strong></td>
+            <td>GPIO2</td>
+            <td>Электрод 1</td>
+            <td>Только без ADS1115</td>
+        </tr>
+        <tr>
+            <td><strong>ADS1115 SDA</strong></td>
+            <td>GPIO5</td>
+            <td>I2C шина</td>
+            <td>Общая с OLED</td>
+        </tr>
+        <tr>
+            <td><strong>ADS1115 SCL</strong></td>
+            <td>GPIO6</td>
+            <td>I2C шина</td>
+            <td>Общая с OLED</td>
+        </tr>
+        <tr>
+            <td><strong>DS18B20</strong></td>
+            <td>GPIO10</td>
+            <td>OneWire + R 4.7kΩ</td>
+            <td>Температура</td>
+        </tr>
+        <tr>
+            <td><strong>Кнопка CAL</strong></td>
+            <td>GPIO3</td>
+            <td>INPUT_PULLUP → GND</td>
+            <td>Калибровка</td>
+        </tr>
+        <tr>
+            <td><strong>Кнопка MEAS</strong></td>
+            <td>GPIO4</td>
+            <td>INPUT_PULLUP → GND</td>
+            <td>Измерение</td>
+        </tr>
+        <tr>
+            <td><strong>Приемник 1</strong></td>
+            <td>GPIO7</td>
+            <td>Реле IN1</td>
+            <td>Головы</td>
+        </tr>
+        <tr>
+            <td><strong>Приемник 2</strong></td>
+            <td>GPIO8</td>
+            <td>Реле IN2</td>
+            <td>Тело</td>
+        </tr>
+        <tr>
+            <td><strong>Приемник 3</strong></td>
+            <td>GPIO9</td>
+            <td>Реле IN3</td>
+            <td>Хвосты</td>
+        </tr>
+        <tr>
+            <td><strong>Battery ADC</strong></td>
+            <td>GPIO1</td>
+            <td>Делитель 10kΩ+10kΩ</td>
+            <td>Мониторинг батареи</td>
+        </tr>
+    </table>
+
+    <h1>📊 I2C АДРЕСА</h1>
+    <table>
+        <tr>
+            <th>Устройство</th>
+            <th>Адрес</th>
+            <th>Изменяемый</th>
+            <th>Примечание</th>
+        </tr>
+        <tr>
+            <td><strong>OLED SSD1306</strong></td>
+            <td>0x3C</td>
+            <td>Нет</td>
+            <td>Встроенный</td>
+        </tr>
+        <tr>
+            <td><strong>ADS1115</strong></td>
+            <td>0x48</td>
+            <td>Да</td>
+            <td>Можно: 0x49, 0x4A, 0x4B</td>
+        </tr>
+        <tr>
+            <td><strong>BMP280</strong></td>
+            <td>0x76</td>
+            <td>Да</td>
+            <td>Опционально, альт: 0x77</td>
+        </tr>
+    </table>
+
+    <h1>⚡ ПИТАНИЕ</h1>
+    <table>
+        <tr>
+            <th>Режим</th>
+            <th>Потребление</th>
+            <th>Время работы (2000mAh)</th>
+        </tr>
+        <tr>
+            <td><strong>Активный</strong></td>
+            <td>~150mA</td>
+            <td>~13 часов</td>
+        </tr>
+        <tr>
+            <td><strong>Экономичный</strong></td>
+            <td>~100mA</td>
+            <td>~20 часов</td>
+        </tr>
+        <tr>
+            <td><strong>Deep Sleep</strong></td>
+            <td>~20mA</td>
+            <td>~100 часов (4 дня)</td>
+        </tr>
+        <tr>
+            <td><strong>+ Приемники</strong></td>
+            <td>+500mA × N</td>
+            <td>Зависит от кол-ва</td>
+        </tr>
+    </table>
+
+    <footer>
+        <p><strong>© 2025 Smart Areometr Project | MIT License</strong></p>
+        <p>Документ создан автоматически | Версия 2.1.14 | 2025-01-20</p>
+        <p style="margin-top: 20px; font-size: 12px;">
+            Для сохранения в PDF: Ctrl+P → Сохранить как PDF<br>
+            GitHub: <a href="https://github.com/yourusername/Smart-Areometr">Smart-Areometr</a>
+        </p>
+    </footer>
+
+</body>
+</html>
