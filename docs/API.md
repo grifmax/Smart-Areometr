@@ -387,6 +387,235 @@ curl http://192.168.4.1/api/session/active
 
 ---
 
+### 14. Приемники: Получить статус
+
+Возвращает статус всех приемников и детектора уровня.
+
+**Endpoint:** `GET /api/receivers/status`
+
+**Response:**
+```json
+{
+  "receivers": [
+    {
+      "id": 0,
+      "name": "Приемник 1",
+      "active": true,
+      "overflowing": false,
+      "current_volume": 500.0,
+      "max_volume": 1000.0,
+      "fraction": "body"
+    }
+  ],
+  "auto_switch": true,
+  "overflow_action": "switch"
+}
+```
+
+**Пример:**
+```bash
+curl http://192.168.4.1/api/receivers/status
+```
+
+---
+
+### 15. Приемники: Переключить приемник
+
+Переключает активный приемник.
+
+**Endpoint:** `POST /api/receivers/switch`
+
+**Request Body:**
+```json
+{
+  "receiver_id": 1
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "active_receiver": 1
+}
+```
+
+**Пример:**
+```bash
+curl -X POST http://192.168.4.1/api/receivers/switch \
+  -H "Content-Type: application/json" \
+  -d '{"receiver_id":1}'
+```
+
+---
+
+### 16. Приемники: Получить конфигурацию
+
+Возвращает конфигурацию всех приемников.
+
+**Endpoint:** `GET /api/receivers/config`
+
+**Response:**
+```json
+{
+  "receivers": [
+    {
+      "id": 0,
+      "name": "Приемник 1",
+      "gpio_pin": 5,
+      "max_volume": 1000.0,
+      "fraction": "body"
+    }
+  ]
+}
+```
+
+---
+
+### 17. Приемники: Сохранить конфигурацию
+
+Сохраняет конфигурацию приемников.
+
+**Endpoint:** `POST /api/receivers/config`
+
+**Request Body:**
+```json
+{
+  "receivers": [
+    {
+      "id": 0,
+      "name": "Приемник 1",
+      "gpio_pin": 5,
+      "max_volume": 1000.0
+    }
+  ]
+}
+```
+
+---
+
+### 18. Детектор уровня: Получить статус
+
+Возвращает статус детектора уровня жидкости.
+
+**Endpoint:** `GET /api/receivers/level/status`
+
+**Response:**
+```json
+{
+  "enabled": true,
+  "overflow": false,
+  "voltage": 1.234,
+  "threshold": 0.5
+}
+```
+
+---
+
+### 19. Детектор уровня: Получить напряжение
+
+Возвращает текущее напряжение детектора уровня.
+
+**Endpoint:** `GET /api/receivers/level/voltage`
+
+**Response:**
+```json
+{
+  "voltage": 1.234
+}
+```
+
+---
+
+### 20. Детектор уровня: Установить порог
+
+Устанавливает порог переполнения.
+
+**Endpoint:** `POST /api/receivers/level/threshold`
+
+**Request Body:**
+```json
+{
+  "threshold": 0.5
+}
+```
+
+---
+
+### 21. Датчики: Получить статус
+
+Возвращает статус всех датчиков в мультисенсорном режиме.
+
+**Endpoint:** `GET /api/sensors/status`
+
+**Response:**
+```json
+{
+  "sensor_count": 2,
+  "max_sensors": 4,
+  "sensors": [
+    {
+      "id": 0,
+      "name": "Основной датчик",
+      "alcohol": 45.2,
+      "temperature": 22.5,
+      "stability": 95,
+      "raw_value": 1234,
+      "active": true,
+      "calibrated": true
+    }
+  ]
+}
+```
+
+---
+
+### 22. Датчики: Включить/выключить
+
+Включает или выключает конкретный датчик.
+
+**Endpoint:** `POST /api/sensors/enable`
+
+**Request Body:**
+```json
+{
+  "sensor_id": 0,
+  "enabled": true
+}
+```
+
+---
+
+### 23. WebSocket: Real-time обновления
+
+WebSocket endpoint для получения real-time обновлений данных.
+
+**Endpoint:** `WS /ws`
+
+**Подключение:**
+```javascript
+const ws = new WebSocket('ws://192.168.4.1/ws');
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Alcohol:', data.alcohol);
+  console.log('Temperature:', data.temperature);
+};
+```
+
+**Формат сообщений:**
+```json
+{
+  "alcohol": 45.2,
+  "temperature": 22.5,
+  "stability": 95,
+  "fraction": "body",
+  "timestamp": 1234567890
+}
+```
+
+---
+
 ## Планируемые endpoints (TODO)
 
 ### Получить историю измерений
