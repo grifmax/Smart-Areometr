@@ -28,27 +28,52 @@ function initLevelChart() {
                 data: [],
                 borderColor: 'rgb(75, 192, 192)',
                 backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                tension: 0.1
+                tension: 0.1,
+                pointRadius: 0,
+                pointHoverRadius: 3
             }, {
                 label: 'Порог (В)',
                 data: [],
                 borderColor: 'rgb(255, 99, 132)',
                 borderDash: [5, 5],
-                fill: false
+                fill: false,
+                pointRadius: 0,
+                pointHoverRadius: 0
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: false, // Отключаем анимацию для стабильности
+            layout: {
+                padding: {
+                    top: 10,
+                    bottom: 10
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
             scales: {
+                x: {
+                    display: true,
+                    ticks: {
+                        maxTicksLimit: 10 // Ограничиваем количество меток
+                    }
+                },
                 y: {
                     beginAtZero: true,
-                    max: 5.0
+                    max: 5.0,
+                    min: 0
                 }
             },
             plugins: {
                 legend: {
                     display: true
+                },
+                tooltip: {
+                    enabled: true
                 }
             }
         }
@@ -76,27 +101,45 @@ async function updateStatus() {
     }
 }
 
-// Обновление отображения приемников
+// Обновление отображения приемников (оптимизированная версия)
 function updateReceiversDisplay(data) {
     const container = document.getElementById('receiversStatus');
     if (!container) return;
 
     if (!data.receivers || !Array.isArray(data.receivers)) {
-        container.innerHTML = '<p>Нет данных о приемниках</p>';
+        if (container.children.length === 0) {
+            container.innerHTML = '<p>Нет данных о приемниках</p>';
+        }
         return;
     }
 
-    container.innerHTML = data.receivers.map(receiver => {
+    // Обновляем существующие карточки или создаем новые
+    data.receivers.forEach((receiver, index) => {
+        const receiverId = `receiver-${receiver.id}`;
+        let card = document.getElementById(receiverId);
+        
         const isActive = receiver.active;
         const isOverflowing = receiver.overflowing;
         const volumePercent = (receiver.current_volume / receiver.max_volume) * 100;
         
-        return `
-            <div class="receiver-card ${isActive ? 'active' : ''} ${isOverflowing ? 'overflowing' : ''}">
+        if (!card) {
+            // Создаем новую карточку
+            card = document.createElement('div');
+            card.id = receiverId;
+            card.className = `receiver-card ${isActive ? 'active' : ''} ${isOverflowing ? 'overflowing' : ''}`;
+            container.appendChild(card);
+        }
+        
+        // Обновляем только измененные данные, не пересоздавая весь DOM
+        const header = card.querySelector('.receiver-header');
+        const body = card.querySelector('.receiver-body');
+        
+        if (!header || !body) {
+            // Если структуры нет, создаем заново
+            card.innerHTML = `
                 <div class="receiver-header">
                     <h3>${receiver.name || `Приемник ${receiver.id + 1}`}</h3>
-                    ${isActive ? '<span class="badge badge-success">АКТИВЕН</span>' : ''}
-                    ${isOverflowing ? '<span class="badge badge-danger">ПЕРЕПОЛНЕНИЕ</span>' : ''}
+                    <span class="badge-container"></span>
                 </div>
                 <div class="receiver-body">
                     <div class="receiver-info">
@@ -113,9 +156,58 @@ function updateReceiversDisplay(data) {
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
-    }).join('');
+            `;
+        } else {
+            // Обновляем только измененные элементы
+            const nameEl = header.querySelector('h3');
+            if (nameEl) nameEl.textContent = receiver.name || `Приемник ${receiver.id + 1}`;
+            
+            const badgeContainer = header.querySelector('.badge-container') || header;
+            const existingBadges = badgeContainer.querySelectorAll('.badge');
+            existingBadges.forEach(b => b.remove());
+            
+            if (isActive) {
+                const badge = document.createElement('span');
+                badge.className = 'badge badge-success';
+                badge.textContent = 'АКТИВЕН';
+                badgeContainer.appendChild(badge);
+            }
+            if (isOverflowing) {
+                const badge = document.createElement('span');
+                badge.className = 'badge badge-danger';
+                badge.textContent = 'ПЕРЕПОЛНЕНИЕ';
+                badgeContainer.appendChild(badge);
+            }
+            
+            // Обновляем классы карточки
+            card.className = `receiver-card ${isActive ? 'active' : ''} ${isOverflowing ? 'overflowing' : ''}`;
+            
+            // Обновляем значения
+            const volumeValue = body.querySelector('.info-row .info-value');
+            if (volumeValue) {
+                volumeValue.textContent = `${receiver.current_volume.toFixed(1)} / ${receiver.max_volume} мл`;
+            }
+            
+            const fractionValue = body.querySelectorAll('.info-row .info-value')[1];
+            if (fractionValue) {
+                fractionValue.textContent = receiver.fraction || 'Не указана';
+            }
+            
+            // Обновляем прогресс-бар
+            const progressFill = body.querySelector('.progress-fill');
+            if (progressFill) {
+                progressFill.style.width = `${Math.min(volumePercent, 100)}%`;
+            }
+        }
+    });
+    
+    // Удаляем лишние карточки, если их стало меньше
+    const existingCards = container.querySelectorAll('.receiver-card');
+    existingCards.forEach((card, index) => {
+        if (index >= data.receivers.length) {
+            card.remove();
+        }
+    });
 
     // Обновляем настройки авто-переключения
     if (document.getElementById('autoSwitchEnabled')) {
@@ -201,13 +293,15 @@ async function updateLevelChart() {
 
             // Обновляем график
             if (levelChart) {
-                levelChart.data.labels = levelData.labels;
-                levelChart.data.datasets[0].data = levelData.voltages;
+                // Обновляем данные напрямую, без пересоздания массивов
+                levelChart.data.labels = [...levelData.labels];
+                levelChart.data.datasets[0].data = [...levelData.voltages];
                 
-                // Обновляем линию порога
+                // Обновляем линию порога (создаем массив один раз)
                 levelChart.data.datasets[1].data = levelData.labels.map(() => threshold);
                 
-                levelChart.update('none'); // 'none' для плавной анимации
+                // Обновляем без анимации и без пересчета масштаба
+                levelChart.update('none');
             }
         }
     } catch (error) {
@@ -339,6 +433,107 @@ async function setAutoSwitch() {
     const checkbox = document.getElementById('autoSwitchEnabled');
     if (!checkbox) return;
 
-    // TODO: Добавить API endpoint для установки авто-переключения
-    // Пока оставляем только UI
+    const enabled = checkbox.checked;
+    try {
+        const response = await fetch('/api/receivers/auto-switch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ enabled: enabled })
+        });
+
+        if (response.ok) {
+            // Успешно
+        } else {
+            alert('Ошибка установки авто-переключения');
+            checkbox.checked = !enabled; // Откатываем изменение
+        }
+    } catch (error) {
+        console.error('Ошибка установки авто-переключения:', error);
+        alert('Ошибка установки авто-переключения');
+        checkbox.checked = !enabled; // Откатываем изменение
+    }
 }
+
+// Загрузка конфигурации приемников
+async function loadReceiverConfig() {
+    try {
+        const response = await fetch('/api/receivers/config');
+        if (response.ok) {
+            const data = await response.json();
+            displayReceiverConfig(data);
+        } else {
+            alert('Ошибка загрузки конфигурации');
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки конфигурации:', error);
+        alert('Ошибка загрузки конфигурации');
+    }
+}
+
+// Отображение конфигурации приемников
+function displayReceiverConfig(data) {
+    const container = document.getElementById('receiverConfig');
+    if (!container || !data.receivers) return;
+
+    container.innerHTML = data.receivers.map(receiver => {
+        return `
+            <div class="form-group">
+                <label>Приемник ${receiver.id + 1} (${receiver.name || 'Не указано'})</label>
+                <div class="input-group">
+                    <input type="text" id="receiver_${receiver.id}_name" class="form-control" 
+                           placeholder="Название" value="${receiver.name || ''}">
+                    <input type="number" id="receiver_${receiver.id}_gpio" class="form-control" 
+                           placeholder="GPIO пин" value="${receiver.gpio_pin || ''}" min="0" max="50">
+                    <input type="number" id="receiver_${receiver.id}_max_volume" class="form-control" 
+                           placeholder="Макс. объем (мл)" value="${receiver.max_volume || ''}" min="0" step="0.1">
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Сохранение конфигурации приемников
+async function saveReceiverConfig() {
+    try {
+        const receivers = [];
+        for (let i = 0; i < 3; i++) {
+            const nameInput = document.getElementById(`receiver_${i}_name`);
+            const gpioInput = document.getElementById(`receiver_${i}_gpio`);
+            const maxVolumeInput = document.getElementById(`receiver_${i}_max_volume`);
+            
+            if (nameInput && gpioInput && maxVolumeInput) {
+                receivers.push({
+                    id: i,
+                    name: nameInput.value || `Приемник ${i + 1}`,
+                    gpio_pin: parseInt(gpioInput.value) || 0,
+                    max_volume: parseFloat(maxVolumeInput.value) || 1000.0
+                });
+            }
+        }
+
+        const response = await fetch('/api/receivers/config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ receivers: receivers })
+        });
+
+        if (response.ok) {
+            alert('Конфигурация успешно сохранена');
+            updateStatus(); // Обновляем статус
+        } else {
+            alert('Ошибка сохранения конфигурации');
+        }
+    } catch (error) {
+        console.error('Ошибка сохранения конфигурации:', error);
+        alert('Ошибка сохранения конфигурации');
+    }
+}
+
+// Загружаем конфигурацию при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    loadReceiverConfig();
+});

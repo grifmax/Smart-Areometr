@@ -26,6 +26,9 @@ MQTTBridge::MQTTBridge()
     topicBatteryVoltage = String(MQTT_BASE_TOPIC) + "/battery/voltage";
     topicBatteryPercent = String(MQTT_BASE_TOPIC) + "/battery/percent";
     topicBatteryStatus = String(MQTT_BASE_TOPIC) + "/battery/status";
+    topicReceiverStatus = String(MQTT_BASE_TOPIC) + "/receiver/status";
+    topicReceiverSwitch = String(MQTT_BASE_TOPIC) + "/receiver/switch";
+    topicReceiverEvent = String(MQTT_BASE_TOPIC) + "/receiver/event";
 
     mqttBridgeInstance = this;
 }
@@ -96,6 +99,9 @@ void MQTTBridge::setBaseTopic(const String &base) {
     topicBatteryVoltage = base + "/battery/voltage";
     topicBatteryPercent = base + "/battery/percent";
     topicBatteryStatus = base + "/battery/status";
+    topicReceiverStatus = base + "/receiver/status";
+    topicReceiverSwitch = base + "/receiver/switch";
+    topicReceiverEvent = base + "/receiver/event";
 }
 
 bool MQTTBridge::reconnect() {
@@ -268,10 +274,16 @@ void MQTTBridge::subscribeToCommands() {
     String commandTopic = String(MQTT_BASE_TOPIC) + "/" + MQTT_TOPIC_COMMAND;
     String calibrateTopic = String(MQTT_BASE_TOPIC) + "/" + MQTT_TOPIC_CALIBRATE;
     String thresholdsTopic = String(MQTT_BASE_TOPIC) + "/" + MQTT_TOPIC_SET_THRESHOLDS;
+    String receiverSwitchTopic = String(MQTT_BASE_TOPIC) + "/" + MQTT_TOPIC_RECEIVER_SWITCH;
+    String receiverAutoSwitchTopic = String(MQTT_BASE_TOPIC) + "/" + MQTT_TOPIC_RECEIVER_AUTO_SWITCH;
+    String receiverOverflowActionTopic = String(MQTT_BASE_TOPIC) + "/" + MQTT_TOPIC_RECEIVER_OVERFLOW_ACTION;
 
     mqttClient->subscribe(commandTopic.c_str());
     mqttClient->subscribe(calibrateTopic.c_str());
     mqttClient->subscribe(thresholdsTopic.c_str());
+    mqttClient->subscribe(receiverSwitchTopic.c_str());
+    mqttClient->subscribe(receiverAutoSwitchTopic.c_str());
+    mqttClient->subscribe(receiverOverflowActionTopic.c_str());
 
     Serial.println("MQTT: Subscribed to command topics");
 }
@@ -313,6 +325,40 @@ void MQTTBridge::messageCallback(char* topic, byte* payload, unsigned int length
     else if (topicStr.endsWith("/" + String(MQTT_TOPIC_SET_THRESHOLDS))) {
         // JSON с порогами фракций
         publishEvent("thresholds_update_requested", message);
+    }
+    else if (topicStr.endsWith("/" + String(MQTT_TOPIC_RECEIVER_SWITCH))) {
+        // Команда переключения приемника: {"receiver_id": 0}
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, message);
+        if (!error && doc.containsKey("receiver_id")) {
+            uint8_t receiverId = doc["receiver_id"];
+            if (switchReceiverCallback && switchReceiverCallback(receiverId)) {
+                publishReceiverSwitch(receiverId);
+                publishEvent("receiver_switched", String(receiverId));
+            }
+        }
+    }
+    else if (topicStr.endsWith("/" + String(MQTT_TOPIC_RECEIVER_AUTO_SWITCH))) {
+        // Включение/выключение авто-переключения: {"enabled": true}
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, message);
+        if (!error && doc.containsKey("enabled")) {
+            bool enabled = doc["enabled"];
+            if (setAutoSwitchCallback && setAutoSwitchCallback(enabled)) {
+                publishEvent("auto_switch_changed", enabled ? "enabled" : "disabled");
+            }
+        }
+    }
+    else if (topicStr.endsWith("/" + String(MQTT_TOPIC_RECEIVER_OVERFLOW_ACTION))) {
+        // Установка действия при переполнении: {"action": "switch_next"}
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, message);
+        if (!error && doc.containsKey("action")) {
+            String action = doc["action"];
+            if (setOverflowActionCallback && setOverflowActionCallback(action)) {
+                publishEvent("overflow_action_changed", action);
+            }
+        }
     }
 }
 
@@ -427,4 +473,58 @@ void MQTTBridge::setStabilityCallback(std::function<uint8_t()> callback) {
 
 void MQTTBridge::setFractionCallback(std::function<String()> callback) {
     fractionCallback = callback;
+}
+
+void MQTTBridge::publishReceiverStatus() {
+    if (!isConnected() || !receiverStatusCallback) return;
+    
+    String json = receiverStatusCallback();
+    mqttClient->publish(topicReceiverStatus.c_str(), json.c_str(), false);
+    Serial.println("MQTT: Receiver status published");
+}
+
+void MQTTBridge::publishReceiverSwitch(uint8_t receiverId) {
+    if (!isConnected()) return;
+    
+    JsonDocument doc;
+    doc["receiver_id"] = receiverId;
+    doc["timestamp"] = millis();
+    
+    String json;
+    serializeJson(doc, json);
+    mqttClient->publish(topicReceiverSwitch.c_str(), json.c_str(), false);
+    
+    Serial.printf("MQTT: Receiver switch published - receiver %d\n", receiverId);
+}
+
+void MQTTBridge::publishReceiverOverflow(uint8_t receiverId) {
+    if (!isConnected()) return;
+    
+    JsonDocument doc;
+    doc["receiver_id"] = receiverId;
+    doc["event"] = "overflow";
+    doc["timestamp"] = millis();
+    
+    String json;
+    serializeJson(doc, json);
+    mqttClient->publish(topicReceiverEvent.c_str(), json.c_str(), false);
+    
+    publishEvent("receiver_overflow", String(receiverId));
+    Serial.printf("MQTT: Receiver overflow published - receiver %d\n", receiverId);
+}
+
+void MQTTBridge::setReceiverStatusCallback(std::function<String()> callback) {
+    receiverStatusCallback = callback;
+}
+
+void MQTTBridge::setSwitchReceiverCallback(std::function<bool(uint8_t)> callback) {
+    switchReceiverCallback = callback;
+}
+
+void MQTTBridge::setSetAutoSwitchCallback(std::function<bool(bool)> callback) {
+    setAutoSwitchCallback = callback;
+}
+
+void MQTTBridge::setSetOverflowActionCallback(std::function<bool(const String&)> callback) {
+    setOverflowActionCallback = callback;
 }

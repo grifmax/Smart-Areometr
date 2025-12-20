@@ -5,12 +5,17 @@
 #include <Preferences.h>
 
 WebServerManager::WebServerManager(uint16_t port)
-    : apMode(false), deviceIP("") {
+    : apMode(false), deviceIP(""), lastWebSocketUpdate(0), webSocketUpdateInterval(1000) {
     server = new AsyncWebServer(port);
+    webSocket = new AsyncWebSocket("/ws");
 }
 
 WebServerManager::~WebServerManager() {
     stop();
+    if (webSocket) {
+        webSocket->closeAll();
+        delete webSocket;
+    }
     delete server;
 }
 
@@ -72,6 +77,7 @@ bool WebServerManager::beginAP(const String &s, const String &p) {
 
         setupRoutes();
         setupOTA();
+        setupWebSocket();
         
         delay(500);
         server->begin();
@@ -148,6 +154,22 @@ void WebServerManager::setupRoutes() {
     server->on("/distillation.html", HTTP_GET, [](AsyncWebServerRequest *request) {
         if (LittleFS.exists("/distillation.html")) {
             request->send(LittleFS, "/distillation.html", "text/html");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
+    });
+
+    server->on("/receivers.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (LittleFS.exists("/receivers.html")) {
+            request->send(LittleFS, "/receivers.html", "text/html");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
+    });
+
+    server->on("/sensors.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (LittleFS.exists("/sensors.html")) {
+            request->send(LittleFS, "/sensors.html", "text/html");
         } else {
             request->send(404, "text/plain", "File not found");
         }
@@ -262,6 +284,30 @@ void WebServerManager::setupRoutes() {
     server->on("/js/dilution-calculator-ui.js", HTTP_GET, [](AsyncWebServerRequest *request) {
         if (LittleFS.exists("/js/dilution-calculator-ui.js")) {
             request->send(LittleFS, "/js/dilution-calculator-ui.js", "application/javascript");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
+    });
+
+    server->on("/js/i18n.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (LittleFS.exists("/js/i18n.js")) {
+            request->send(LittleFS, "/js/i18n.js", "application/javascript");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
+    });
+
+    server->on("/js/receivers.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (LittleFS.exists("/js/receivers.js")) {
+            request->send(LittleFS, "/js/receivers.js", "application/javascript");
+        } else {
+            request->send(404, "text/plain", "File not found");
+        }
+    });
+
+    server->on("/js/sensors.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (LittleFS.exists("/js/sensors.js")) {
+            request->send(LittleFS, "/js/sensors.js", "application/javascript");
         } else {
             request->send(404, "text/plain", "File not found");
         }
@@ -990,8 +1036,16 @@ void WebServerManager::setupRoutes() {
     // === Level Detector API ===
     server->on("/api/receivers/level/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
         if (getLevelStatusCallback) {
-            String json = getLevelStatusCallback();
-            request->send(200, "application/json", json);
+            try {
+                String json = getLevelStatusCallback();
+                if (json.length() > 0) {
+                    request->send(200, "application/json", json);
+                } else {
+                    request->send(500, "application/json", "{\"error\":\"empty_response\"}");
+                }
+            } catch (...) {
+                request->send(500, "application/json", "{\"error\":\"internal_error\"}");
+            }
         } else {
             request->send(404, "application/json", "{\"error\":\"not_available\"}");
         }
@@ -999,12 +1053,16 @@ void WebServerManager::setupRoutes() {
 
     server->on("/api/receivers/level/voltage", HTTP_GET, [this](AsyncWebServerRequest *request) {
         if (getLevelVoltageCallback) {
-            float voltage = getLevelVoltageCallback();
-            JsonDocument doc;
-            doc["voltage"] = voltage;
-            String json;
-            serializeJson(doc, json);
-            request->send(200, "application/json", json);
+            try {
+                float voltage = getLevelVoltageCallback();
+                JsonDocument doc;
+                doc["voltage"] = voltage;
+                String json;
+                serializeJson(doc, json);
+                request->send(200, "application/json", json);
+            } catch (...) {
+                request->send(500, "application/json", "{\"error\":\"internal_error\"}");
+            }
         } else {
             request->send(404, "application/json", "{\"error\":\"not_available\"}");
         }
@@ -1134,12 +1192,166 @@ void WebServerManager::setupRoutes() {
         }
     );
 
+    server->on("/api/receivers/auto-switch", HTTP_POST,
+        [](AsyncWebServerRequest *request) {},
+        nullptr,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (total > 256) {
+                request->send(413, "application/json", "{\"error\":\"payload_too_large\"}");
+                return;
+            }
+            
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, (const char*)data, len);
+            
+            if (error || len == 0 || !doc.containsKey("enabled")) {
+                request->send(400, "application/json", "{\"error\":\"invalid_json\"}");
+                return;
+            }
+            
+            bool enabled = doc["enabled"];
+            if (setAutoSwitchCallback && setAutoSwitchCallback(enabled)) {
+                request->send(200, "application/json", "{\"status\":\"success\"}");
+            } else {
+                request->send(400, "application/json", "{\"error\":\"failed\"}");
+            }
+        }
+    );
+
+    server->on("/api/receivers/config", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getReceiverConfigCallback) {
+            String json = getReceiverConfigCallback();
+            request->send(200, "application/json", json);
+        } else {
+            request->send(404, "application/json", "{\"error\":\"not_available\"}");
+        }
+    });
+
+    server->on("/api/receivers/config", HTTP_POST,
+        [](AsyncWebServerRequest *request) {},
+        nullptr,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (total > 1024) {
+                request->send(413, "application/json", "{\"error\":\"payload_too_large\"}");
+                return;
+            }
+            
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, (const char*)data, len);
+            
+            if (error || len == 0) {
+                request->send(400, "application/json", "{\"error\":\"invalid_json\"}");
+                return;
+            }
+            
+            String json;
+            serializeJson(doc, json);
+            if (setReceiverConfigCallback && setReceiverConfigCallback(json)) {
+                request->send(200, "application/json", "{\"status\":\"success\"}");
+            } else {
+                request->send(400, "application/json", "{\"error\":\"failed\"}");
+            }
+        }
+    );
+
+    // === Multi-Sensor API ===
+    server->on("/api/sensors/status", HTTP_GET, [this](AsyncWebServerRequest *request) {
+        if (getSensorsStatusCallback) {
+            String json = getSensorsStatusCallback();
+            request->send(200, "application/json", json);
+        } else {
+            request->send(404, "application/json", "{\"error\":\"not_available\"}");
+        }
+    });
+
+    server->on("/api/sensors/enable", HTTP_POST,
+        [](AsyncWebServerRequest *request) {},
+        nullptr,
+        [this](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+            if (total > 256) {
+                request->send(413, "application/json", "{\"error\":\"payload_too_large\"}");
+                return;
+            }
+            
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, (const char*)data, len);
+            
+            if (error || len == 0 || !doc["sensor_id"].is<uint8_t>() || !doc["enabled"].is<bool>()) {
+                request->send(400, "application/json", "{\"error\":\"invalid_json\"}");
+                return;
+            }
+            
+            uint8_t sensorId = doc["sensor_id"];
+            bool enabled = doc["enabled"];
+            
+            if (setSensorEnabledCallback && setSensorEnabledCallback(sensorId, enabled)) {
+                request->send(200, "application/json", "{\"status\":\"success\"}");
+            } else {
+                request->send(400, "application/json", "{\"error\":\"failed\"}");
+            }
+        }
+    );
+
     // 404 handler
     server->onNotFound([](AsyncWebServerRequest *request) {
         request->send(404, "text/plain", "Not Found");
     });
 
     Serial.println("Web server routes configured");
+}
+
+void WebServerManager::setupWebSocket() {
+    if (!webSocket) return;
+    
+    // Обработчик событий WebSocket
+    webSocket->onEvent([](AsyncWebSocket *server, AsyncWebSocketClient *client, 
+                          AwsEventType type, void *arg, uint8_t *data, size_t len) {
+        if (type == WS_EVT_CONNECT) {
+            Serial.printf("WebSocket: клиент #%u подключен из %s\n", client->id(), client->remoteIP().toString().c_str());
+        } else if (type == WS_EVT_DISCONNECT) {
+            Serial.printf("WebSocket: клиент #%u отключен\n", client->id());
+        } else if (type == WS_EVT_ERROR) {
+            Serial.printf("WebSocket: ошибка клиента #%u\n", client->id());
+        } else if (type == WS_EVT_PONG) {
+            Serial.printf("WebSocket: получен pong от клиента #%u\n", client->id());
+        } else if (type == WS_EVT_DATA) {
+            // Обработка входящих данных (если нужно)
+            // Пока не используется, но можно добавить команды от клиента
+        }
+    });
+    
+    // Добавляем WebSocket к серверу
+    server->addHandler(webSocket);
+    
+    Serial.println("WebSocket настроен на /ws");
+}
+
+void WebServerManager::broadcastWebSocketData() {
+    if (!webSocket || webSocket->count() == 0) {
+        return;  // Нет подключенных клиентов
+    }
+    
+    // Генерируем JSON с данными измерений
+    String json = generateMeasurementJSON();
+    
+    if (json.length() > 0) {
+        webSocket->textAll(json);
+    }
+}
+
+void WebServerManager::updateWebSocket() {
+    if (!webSocket) return;
+    
+    unsigned long now = millis();
+    
+    // Обновляем данные через WebSocket с заданным интервалом
+    if (now - lastWebSocketUpdate >= webSocketUpdateInterval) {
+        lastWebSocketUpdate = now;
+        broadcastWebSocketData();
+        
+        // Очищаем неактивные подключения
+        webSocket->cleanupClients();
+    }
 }
 
 void WebServerManager::setupOTA() {
@@ -1409,9 +1621,34 @@ void WebServerManager::setSetOverflowActionCallback(std::function<bool(const Str
     setOverflowActionCallback = callback;
 }
 
+void WebServerManager::setSetAutoSwitchCallback(std::function<bool(bool)> callback) {
+    setAutoSwitchCallback = callback;
+}
+
+void WebServerManager::setGetReceiverConfigCallback(std::function<String()> callback) {
+    getReceiverConfigCallback = callback;
+}
+
+void WebServerManager::setSetReceiverConfigCallback(std::function<bool(const String&)> callback) {
+    setReceiverConfigCallback = callback;
+}
+
+void WebServerManager::setGetSensorsStatusCallback(std::function<String()> callback) {
+    getSensorsStatusCallback = callback;
+}
+
+void WebServerManager::setSetSensorEnabledCallback(std::function<bool(uint8_t, bool)> callback) {
+    setSensorEnabledCallback = callback;
+}
+
 void WebServerManager::handle() {
     // AsyncWebServer обрабатывает запросы автоматически, нужно только OTA
     ArduinoOTA.handle();
+    
+    // Обновляем WebSocket
+    if (webSocket) {
+        updateWebSocket();
+    }
 }
 
 void WebServerManager::handleOTA() {

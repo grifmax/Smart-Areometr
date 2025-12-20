@@ -91,7 +91,7 @@
                     </div>
 
                     <!-- График уровня -->
-                    <div style="margin-top: calc(var(--spacing) * 2);">
+                    <div style="margin-top: calc(var(--spacing) * 2); height: 300px; position: relative;">
                         <canvas id="levelChart"></canvas>
                     </div>
 
@@ -149,6 +149,22 @@
                         <button class="btn btn-primary" onclick="switchReceiver(0)">Приемник 1</button>
                         <button class="btn btn-primary" onclick="switchReceiver(1)">Приемник 2</button>
                         <button class="btn btn-primary" onclick="switchReceiver(2)">Приемник 3</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Конфигурация приемников -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>⚙️ Конфигурация приемников</h2>
+                </div>
+                <div class="card-body">
+                    <div id="receiverConfig">
+                        <!-- Будет заполнено через JavaScript -->
+                    </div>
+                    <div class="form-group" style="margin-top: var(--spacing);">
+                        <button class="btn btn-primary" onclick="loadReceiverConfig()">Загрузить конфигурацию</button>
+                        <button class="btn btn-success" onclick="saveReceiverConfig()">Сохранить конфигурацию</button>
                     </div>
                 </div>
             </div>

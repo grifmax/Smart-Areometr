@@ -12,6 +12,7 @@
 #include "DistillationSession.h"
 #include "LevelDetector.h"
 #include "ReceiverController.h"
+#include "MultiSensorManager.h"
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
@@ -22,6 +23,10 @@
 
 #ifdef BATTERY_MONITOR_ENABLED
 #include "BatteryMonitor.h"
+#endif
+
+#ifdef POWER_MANAGER_ENABLED
+#include "PowerManager.h"
 #endif
 
 // Глобальные объекты
@@ -47,8 +52,16 @@ LevelDetector levelDetector;
 ReceiverController receiverController;
 #endif
 
+#ifdef USE_ADS1115
+MultiSensorManager multiSensorManager;
+#endif
+
 #ifdef BATTERY_MONITOR_ENABLED
 BatteryMonitor batteryMonitor(BATTERY_ADC_PIN, BATTERY_VOLTAGE_MIN, BATTERY_VOLTAGE_MAX, BATTERY_LOW_THRESHOLD);
+#endif
+
+#ifdef POWER_MANAGER_ENABLED
+PowerManager powerManager;
 #endif
 
 // Переменные состояния
@@ -172,6 +185,14 @@ void setup() {
 #endif
 #endif
 
+    // Инициализация PowerManager
+#ifdef POWER_MANAGER_ENABLED
+    powerManager.begin();
+    powerManager.setDeepSleepEnabled(DEEP_SLEEP_ENABLED);
+    powerManager.setSleepInterval(DEEP_SLEEP_INTERVAL_SEC * 1000);
+    Serial.println("PowerManager initialized");
+#endif
+
     // Настройка callback при смене фракций
     fractionDetector.setFractionChangeCallback([](Fraction newFraction, Fraction oldFraction) {
         String fractionName = FractionDetector::getFractionName(newFraction);
@@ -182,7 +203,14 @@ void setup() {
         // Автоматическое переключение приемника при смене фракции
 #ifdef RECEIVER_CONTROL_ENABLED
         if (receiverController.isAutoSwitchEnabled()) {
-            receiverController.switchReceiverByFraction(newFraction);
+            uint8_t oldReceiverId = receiverController.getActiveReceiverId();
+            if (receiverController.switchReceiverByFraction(newFraction)) {
+                uint8_t newReceiverId = receiverController.getActiveReceiverId();
+                // Публикуем в MQTT если приемник изменился
+                if (mqttBridge.isConnected() && oldReceiverId != newReceiverId) {
+                    mqttBridge.publishReceiverSwitch(newReceiverId);
+                }
+            }
         }
 #endif
         
@@ -202,6 +230,44 @@ void setup() {
     mqttBridge.setFractionCallback([]() { 
         return FractionDetector::getFractionName(fractionDetector.getCurrentFraction()); 
     });
+
+#ifdef RECEIVER_CONTROL_ENABLED
+    // Callbacks для приемников в MQTT
+    mqttBridge.setReceiverStatusCallback([]() {
+        return receiverController.getStatusJSON();
+    });
+    
+    mqttBridge.setSwitchReceiverCallback([](uint8_t receiverId) {
+        return receiverController.switchReceiver(receiverId);
+    });
+    
+    mqttBridge.setSetAutoSwitchCallback([](bool enabled) {
+        receiverController.setAutoSwitchEnabled(enabled);
+        return true;
+    });
+    
+    mqttBridge.setSetOverflowActionCallback([](const String& action) {
+        OverflowAction overflowAction;
+        if (action == "switch_next") {
+            overflowAction = OverflowAction::SWITCH_NEXT;
+        } else if (action == "stop") {
+            overflowAction = OverflowAction::STOP;
+        } else if (action == "notify_only") {
+            overflowAction = OverflowAction::NOTIFY_ONLY;
+        } else {
+            return false;
+        }
+        receiverController.setOverflowAction(overflowAction);
+        return true;
+    });
+    
+    // Callback при переполнении для публикации в MQTT
+    receiverController.setOnOverflowCallback([](uint8_t receiverId) {
+        if (mqttBridge.isConnected()) {
+            mqttBridge.publishReceiverOverflow(receiverId);
+        }
+    });
+#endif
 
     // Инициализация Wi-Fi и веб-сервера
     display.showMessage("Starting Wi-Fi...", 1000);
@@ -291,48 +357,46 @@ void setup() {
         return json;
     });
 
+#ifdef RECEIVER_LEVEL_DETECTION_ENABLED
     webServer.setGetLevelVoltageCallback([]() {
         return levelDetector.getCurrentVoltage();
     });
-
+    
     webServer.setSetLevelThresholdCallback([](float threshold) {
         levelDetector.setThreshold(threshold);
         return true;
     });
-
+    
     webServer.setCalibrateLevelEmptyCallback([]() {
         levelDetector.calibrateEmpty();
     });
-
+    
     webServer.setCalibrateLevelFullCallback([]() {
         levelDetector.calibrateFull();
     });
+#else
+    webServer.setGetLevelVoltageCallback([]() {
+        return 0.0f;
+    });
+    
+    webServer.setSetLevelThresholdCallback([](float threshold) {
+        return false;
+    });
+    
+    webServer.setCalibrateLevelEmptyCallback([]() {
+        // NOP
+    });
+    
+    webServer.setCalibrateLevelFullCallback([]() {
+        // NOP
+    });
+#endif
 #endif
 
     // Callbacks для ReceiverController
 #ifdef RECEIVER_CONTROL_ENABLED
     webServer.setGetReceiverStatusCallback([]() {
-        JsonDocument doc;
-        doc["enabled"] = receiverController.isEnabled();
-        doc["auto_switch"] = receiverController.isAutoSwitchEnabled();
-        doc["active_receiver"] = receiverController.getActiveReceiverId();
-        
-        JsonArray receiversArray = doc["receivers"].to<JsonArray>();
-        for (uint8_t i = 0; i < RECEIVER_COUNT; i++) {
-            const Receiver& receiver = receiverController.getReceiver(i);
-            JsonObject receiverObj = receiversArray.add<JsonObject>();
-            receiverObj["id"] = receiver.id;
-            receiverObj["name"] = receiver.name;
-            receiverObj["active"] = receiver.isActive;
-            receiverObj["overflowing"] = receiver.isOverflowing;
-            receiverObj["current_volume"] = receiver.currentVolume;
-            receiverObj["max_volume"] = receiver.maxVolume;
-            receiverObj["fraction"] = FractionDetector::getFractionName(receiver.associatedFraction);
-        }
-        
-        String json;
-        serializeJson(doc, json);
-        return json;
+        return receiverController.getStatusJSON();
     });
 
     webServer.setSwitchReceiverCallback([](uint8_t receiverId) {
@@ -351,6 +415,58 @@ void setup() {
             return false;
         }
         receiverController.setOverflowAction(overflowAction);
+        return true;
+    });
+
+    webServer.setSetAutoSwitchCallback([](bool enabled) {
+        receiverController.setAutoSwitchEnabled(enabled);
+        return true;
+    });
+
+    webServer.setGetReceiverConfigCallback([]() {
+        JsonDocument doc;
+        JsonArray receiversArray = doc["receivers"].to<JsonArray>();
+        for (uint8_t i = 0; i < RECEIVER_COUNT; i++) {
+            const Receiver& receiver = receiverController.getReceiver(i);
+            JsonObject receiverObj = receiversArray.add<JsonObject>();
+            receiverObj["id"] = receiver.id;
+            receiverObj["name"] = receiver.name;
+            receiverObj["gpio_pin"] = (int)receiver.controlPin;
+            receiverObj["max_volume"] = receiver.maxVolume;
+            receiverObj["fraction"] = FractionDetector::getFractionName(receiver.associatedFraction);
+        }
+        String json;
+        serializeJson(doc, json);
+        return json;
+    });
+
+    webServer.setSetReceiverConfigCallback([](const String& json) {
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, json);
+        if (error) {
+            return false;
+        }
+        
+        JsonArray receiversArray = doc["receivers"].as<JsonArray>();
+        for (JsonObject receiverObj : receiversArray) {
+            uint8_t id = receiverObj["id"] | 255;
+            if (id >= RECEIVER_COUNT) continue;
+            
+            String name = receiverObj["name"] | "";
+            int gpioPin = receiverObj["gpio_pin"] | -1;
+            float maxVolume = receiverObj["max_volume"] | RECEIVER_MAX_VOLUME_ML;
+            String fractionStr = receiverObj["fraction"] | "UNKNOWN";
+            
+            Fraction fraction = Fraction::UNKNOWN;
+            if (fractionStr == "HEADS") fraction = Fraction::HEADS;
+            else if (fractionStr == "BODY") fraction = Fraction::BODY;
+            else if (fractionStr == "TAILS") fraction = Fraction::TAILS;
+            else if (fractionStr == "FORESHOTS") fraction = Fraction::FORESHOTS;
+            
+            if (gpioPin >= 0 && gpioPin < 50) {
+                receiverController.configureReceiver(id, name, (gpio_num_t)gpioPin, maxVolume, fraction);
+            }
+        }
         return true;
     });
 #endif
@@ -596,6 +712,39 @@ void setup() {
     });
 #endif
 
+    // Callbacks для мультисенсорного режима
+    webServer.setGetSensorsStatusCallback([]() {
+#ifdef USE_ADS1115
+        return multiSensorManager.getSensorsJSON();
+#else
+        JsonDocument doc;
+        doc["sensor_count"] = 1;
+        doc["max_sensors"] = 1;
+        JsonArray sensorsArray = doc["sensors"].to<JsonArray>();
+        JsonObject sensorObj = sensorsArray.add<JsonObject>();
+        sensorObj["id"] = 0;
+        sensorObj["name"] = "Основной датчик";
+        sensorObj["alcohol"] = currentAlcohol;
+        sensorObj["temperature"] = currentTemperature;
+        sensorObj["stability"] = capacitiveSensor.getLastMeasurementStats().stability;
+        sensorObj["raw_value"] = capacitiveSensor.readRaw();
+        sensorObj["active"] = true;
+        sensorObj["calibrated"] = isCalibrated;
+        String json;
+        serializeJson(doc, json);
+        return json;
+#endif
+    });
+
+    webServer.setSetSensorEnabledCallback([](uint8_t sensorId, bool enabled) {
+#ifdef USE_ADS1115
+        multiSensorManager.setSensorEnabled(sensorId, enabled);
+        return true;
+#else
+        return false;
+#endif
+    });
+
     // Показываем информацию о сети
     display.showNetworkInfo(webServer.getSSID(), webServer.getIP(), webServer.isConnected());
     delay(3000);
@@ -640,6 +789,26 @@ void loop() {
     // Обновление LevelDetector и ReceiverController
 #ifdef RECEIVER_LEVEL_DETECTION_ENABLED
     levelDetector.update();
+#endif
+
+    // Проверка условий для Deep Sleep (если включен и батарея разряжена)
+    // ВАЖНО: Deep Sleep должен срабатывать только если батарея действительно разряжена
+    // и устройство работает от батареи. Если батарея не подключена или показывает
+    // неправильные значения, Deep Sleep не должен срабатывать.
+#ifdef POWER_MANAGER_ENABLED
+#ifdef BATTERY_MONITOR_ENABLED
+    // Проверяем только если прошло достаточно времени после запуска (минимум 30 секунд)
+    // и батарея действительно показывает критический заряд
+    static unsigned long bootTime = millis();
+    if (powerManager.isDeepSleepEnabled() && 
+        (millis() - bootTime > 30000) &&  // Минимум 30 секунд после запуска
+        batteryMonitor.getPercent() < BATTERY_CRITICAL_THRESHOLD &&
+        batteryMonitor.getVoltage() > 2.5f) {  // Проверяем, что батарея подключена (напряжение > 2.5V)
+        // Критический заряд батареи - переходим в Deep Sleep
+        Serial.println("WARNING: Critical battery level, entering Deep Sleep");
+        powerManager.enterDeepSleep(0);  // Используем установленный интервал
+    }
+#endif
 #endif
 
 #ifdef RECEIVER_CONTROL_ENABLED
@@ -696,6 +865,23 @@ void performMeasurement() {
     
     currentAlcohol = rawAlcohol;
 
+    // Обновление мультисенсорного менеджера
+#ifdef USE_ADS1115
+    multiSensorManager.update();
+    
+    // Обновляем данные первого датчика из основного измерения
+    // В полной версии каждый датчик будет измеряться независимо
+    SensorData& sensor0 = const_cast<SensorData&>(multiSensorManager.getSensorData(0));
+    if (sensor0.isActive) {
+        sensor0.alcohol = currentAlcohol;
+        sensor0.temperature = currentTemperature;
+        sensor0.stability = capacitiveSensor.getLastMeasurementStats().stability;
+        sensor0.rawValue = capacitiveSensor.readRaw();
+        sensor0.isCalibrated = isCalibrated;
+        sensor0.lastUpdate = millis();
+    }
+#endif
+
     // Обновление детектора фракций
     Fraction currentFraction = fractionDetector.update(currentAlcohol, currentTemperature);
 
@@ -720,6 +906,16 @@ void performMeasurement() {
                                             batteryMonitor.getPercent(),
                                             batteryMonitor.isBatteryCharging());
             lastBatteryPublish = now;
+        }
+#endif
+
+#ifdef RECEIVER_CONTROL_ENABLED
+        // Публикуем статус приемников реже - каждые 10 секунд
+        static unsigned long lastReceiverPublish = 0;
+        unsigned long now2 = millis();
+        if (now2 - lastReceiverPublish > 10000) {
+            mqttBridge.publishReceiverStatus();
+            lastReceiverPublish = now2;
         }
 #endif
     }

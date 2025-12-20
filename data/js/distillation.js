@@ -85,6 +85,8 @@ function updateSessionDisplay(state, data) {
         if (startBtn) startBtn.disabled = false;
         if (exportJSONBtn) exportJSONBtn.disabled = true;
         if (exportCSVBtn) exportCSVBtn.disabled = true;
+        const exportPDFBtn = document.getElementById('exportPDFBtn');
+        if (exportPDFBtn) exportPDFBtn.disabled = true;
     } else {
         if (sessionForm) sessionForm.style.display = 'none';
         if (sessionActions) sessionActions.style.display = 'flex';
@@ -226,6 +228,110 @@ async function exportJSON() {
 }
 
 // === Экспорт CSV ===
+// === Экспорт в PDF ===
+async function exportPDF() {
+    try {
+        const response = await fetch(`${API_BASE}/api/session/export/json`);
+        if (!response.ok) throw new Error('Failed to export');
+        
+        const sessionData = await response.json();
+        
+        if (!sessionData || !sessionData.data_points || sessionData.data_points.length === 0) {
+            alert('Нет данных сессии для экспорта');
+            return;
+        }
+        
+        // Создаем PDF документ
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // Заголовок
+        doc.setFontSize(18);
+        doc.text('Отчет по сессии дистилляции', 14, 20);
+        
+        // Информация о сессии
+        doc.setFontSize(10);
+        let yPos = 30;
+        doc.text(`Название: ${sessionData.name || 'Не указано'}`, 14, yPos);
+        yPos += 6;
+        doc.text(`ID сессии: ${sessionData.session_id || 'N/A'}`, 14, yPos);
+        yPos += 6;
+        doc.text(`Объем браги: ${sessionData.mash_volume || 0} л`, 14, yPos);
+        yPos += 6;
+        doc.text(`Длительность: ${sessionData.duration_formatted || 'N/A'}`, 14, yPos);
+        yPos += 6;
+        doc.text(`Точек данных: ${sessionData.data_points.length}`, 14, yPos);
+        yPos += 6;
+        doc.text(`Дата создания: ${new Date().toLocaleString('ru-RU')}`, 14, yPos);
+        
+        // Статистика по фракциям
+        if (sessionData.fractions && sessionData.fractions.length > 0) {
+            yPos += 10;
+            doc.setFontSize(12);
+            doc.text('Статистика по фракциям:', 14, yPos);
+            yPos += 8;
+            doc.setFontSize(10);
+            
+            sessionData.fractions.forEach(fraction => {
+                if (yPos > 270) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                doc.text(`${fraction.name || 'Неизвестно'}:`, 20, yPos);
+                doc.text(`Объем: ${(fraction.volume || 0).toFixed(1)} мл`, 80, yPos);
+                doc.text(`Средняя крепость: ${(fraction.avg_alcohol || 0).toFixed(1)}%`, 130, yPos);
+                yPos += 6;
+            });
+        }
+        
+        // Таблица данных (первые 40 записей)
+        yPos += 10;
+        doc.setFontSize(10);
+        doc.text('Данные измерений:', 14, yPos);
+        yPos += 8;
+        
+        // Заголовки таблицы
+        doc.setFontSize(9);
+        doc.text('Время', 14, yPos);
+        doc.text('Крепость', 60, yPos);
+        doc.text('Температура', 100, yPos);
+        doc.text('Фракция', 150, yPos);
+        yPos += 5;
+        
+        // Линия под заголовками
+        doc.line(14, yPos, 190, yPos);
+        yPos += 6;
+        
+        // Данные (максимум 40 записей)
+        const recordsToShow = Math.min(40, sessionData.data_points.length);
+        for (let i = sessionData.data_points.length - recordsToShow; i < sessionData.data_points.length; i++) {
+            if (yPos > 270) {
+                doc.addPage();
+                yPos = 20;
+            }
+            
+            const point = sessionData.data_points[i];
+            const date = new Date(point.timestamp);
+            const timeStr = date.toLocaleTimeString('ru-RU');
+            
+            doc.text(timeStr, 14, yPos);
+            doc.text(`${(point.alcohol || 0).toFixed(1)}%`, 60, yPos);
+            doc.text(`${(point.temperature || 0).toFixed(1)}°C`, 100, yPos);
+            doc.text(point.fraction || 'N/A', 150, yPos);
+            yPos += 6;
+        }
+        
+        // Сохраняем PDF
+        const fileName = `session_${sessionData.session_id || Date.now()}_${new Date().toISOString().split('T')[0]}.pdf`;
+        doc.save(fileName);
+        
+        showNotification('PDF экспортирован успешно', 'success');
+    } catch (error) {
+        console.error('Ошибка экспорта в PDF:', error);
+        showNotification('Ошибка экспорта в PDF', 'error');
+    }
+}
+
 async function exportCSV() {
     try {
         const response = await fetch(`${API_BASE}/api/session/export/csv`);

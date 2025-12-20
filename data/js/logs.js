@@ -209,6 +209,104 @@ function updateStatistics() {
 }
 
 // === Экспорт в CSV ===
+// === Экспорт в PDF ===
+async function exportLogsPDF() {
+    try {
+        // Получаем данные логов
+        const response = await fetch(`${API_BASE}/api/logs/data?start=0&end=${Date.now()}`);
+        if (!response.ok) throw new Error('Failed to fetch logs');
+        
+        const data = await response.json();
+        const measurements = data.measurements || [];
+        
+        if (measurements.length === 0) {
+            alert('Нет данных для экспорта');
+            return;
+        }
+        
+        // Создаем PDF документ
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // Заголовок
+        doc.setFontSize(18);
+        doc.text('Отчет по измерениям', 14, 20);
+        
+        // Информация о документе
+        doc.setFontSize(10);
+        doc.text(`Дата создания: ${new Date().toLocaleString('ru-RU')}`, 14, 30);
+        doc.text(`Количество измерений: ${measurements.length}`, 14, 36);
+        
+        // Статистика
+        if (measurements.length > 0) {
+            const alcoholValues = measurements.map(m => m.alcohol || 0);
+            const tempValues = measurements.map(m => m.temperature || 0);
+            const avgAlcohol = alcoholValues.reduce((a, b) => a + b, 0) / alcoholValues.length;
+            const avgTemp = tempValues.reduce((a, b) => a + b, 0) / tempValues.length;
+            const minAlcohol = Math.min(...alcoholValues);
+            const maxAlcohol = Math.max(...alcoholValues);
+            
+            let yPos = 50;
+            doc.setFontSize(12);
+            doc.text('Статистика:', 14, yPos);
+            yPos += 8;
+            doc.setFontSize(10);
+            doc.text(`Средняя крепость: ${avgAlcohol.toFixed(2)}%`, 20, yPos);
+            yPos += 6;
+            doc.text(`Минимальная крепость: ${minAlcohol.toFixed(2)}%`, 20, yPos);
+            yPos += 6;
+            doc.text(`Максимальная крепость: ${maxAlcohol.toFixed(2)}%`, 20, yPos);
+            yPos += 6;
+            doc.text(`Средняя температура: ${avgTemp.toFixed(2)}°C`, 20, yPos);
+        }
+        
+        // Таблица данных (первые 30 записей)
+        let yPos = 90;
+        doc.setFontSize(10);
+        doc.text('Последние измерения:', 14, yPos);
+        yPos += 8;
+        
+        // Заголовки таблицы
+        doc.setFontSize(9);
+        doc.text('Время', 14, yPos);
+        doc.text('Крепость', 60, yPos);
+        doc.text('Температура', 100, yPos);
+        doc.text('Компенсация', 150, yPos);
+        yPos += 5;
+        
+        // Линия под заголовками
+        doc.line(14, yPos, 190, yPos);
+        yPos += 6;
+        
+        // Данные (максимум 30 записей)
+        const recordsToShow = Math.min(30, measurements.length);
+        for (let i = measurements.length - recordsToShow; i < measurements.length; i++) {
+            if (yPos > 270) {
+                doc.addPage();
+                yPos = 20;
+            }
+            
+            const m = measurements[i];
+            const date = new Date(m.timestamp);
+            const timeStr = date.toLocaleTimeString('ru-RU');
+            
+            doc.text(timeStr, 14, yPos);
+            doc.text(`${(m.alcohol || 0).toFixed(1)}%`, 60, yPos);
+            doc.text(`${(m.temperature || 0).toFixed(1)}°C`, 100, yPos);
+            doc.text(m.compensated ? 'Да' : 'Нет', 150, yPos);
+            yPos += 6;
+        }
+        
+        // Сохраняем PDF
+        doc.save(`logs_${new Date().toISOString().split('T')[0]}.pdf`);
+        
+        showNotification('PDF экспортирован успешно', 'success');
+    } catch (error) {
+        console.error('Ошибка экспорта в PDF:', error);
+        showNotification('Ошибка экспорта в PDF', 'error');
+    }
+}
+
 function exportLogsCSV() {
     if (logsData.length === 0) {
         showNotification('Нет данных для экспорта', 'error');

@@ -46,10 +46,26 @@
 
         <!-- Основной контент -->
         <main class="main-content">
+            <!-- Настройки языка -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 data-i18n="settings.language">🌐 Язык</h2>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label data-i18n="settings.language">Язык интерфейса:</label>
+                        <select id="languageSelect" class="form-control">
+                            <option value="ru">Русский</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <!-- Настройки темы -->
             <div class="card">
                 <div class="card-header">
-                    <h2>🎨 Тема оформления</h2>
+                    <h2 data-i18n="settings.theme">🎨 Тема оформления</h2>
                 </div>
                 <div class="card-body">
                     <div class="theme-settings">
@@ -284,8 +300,32 @@
         </footer>
     </div>
 
+    <script src="/js/i18n.js"></script>
     <script src="/js/theme.js"></script>
     <script src="/js/settings.js"></script>
+    <script>
+        // Функция смены языка
+        function changeLanguage() {
+            const select = document.getElementById('languageSelect');
+            if (select && window.i18n) {
+                window.i18n.setLanguage(select.value);
+            }
+        }
+        
+        // Устанавливаем текущий язык при загрузке и обработчик изменения
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.i18n) {
+                const select = document.getElementById('languageSelect');
+                if (select) {
+                    select.value = window.i18n.getLanguage();
+                    // Добавляем обработчик события
+                    select.addEventListener('change', function() {
+                        changeLanguage();
+                    });
+                }
+            }
+        });
+    </script>
 </body>
 
 </html>

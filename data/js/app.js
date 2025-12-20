@@ -1,12 +1,14 @@
 // === Конфигурация ===
 const API_BASE = '';  // Пустая строка для относительных путей
-const UPDATE_INTERVAL = 2000;  // Обновление каждые 2 секунды
+const UPDATE_INTERVAL = 2000;  // Fallback интервал для HTTP polling (если WebSocket недоступен)
 const MAX_CHART_POINTS = 50;  // Максимум точек на графике
 
 // === Глобальные переменные ===
 let alcoholChart = null;
 let temperatureChart = null;
 let updateTimer = null;
+let ws = null;  // WebSocket соединение
+let useWebSocket = true;  // Использовать WebSocket вместо HTTP polling
 let chartData = {
     labels: [],
     alcohol: [],
@@ -425,7 +427,64 @@ function updateConnectionStatus(connected) {
     }
 }
 
-// === Автоматическое обновление ===
+// === WebSocket подключение ===
+function initWebSocket() {
+    // Определяем протокол (ws или wss)
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    
+    console.log('Подключение к WebSocket:', wsUrl);
+    
+    ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+        console.log('WebSocket подключен');
+        updateConnectionStatus(true);
+        // Останавливаем HTTP polling, если он был запущен
+        stopAutoUpdate();
+    };
+    
+    ws.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            updateMeasurementDisplay(data);
+            updateCharts(data);
+        } catch (error) {
+            console.error('Ошибка парсинга WebSocket данных:', error);
+        }
+    };
+    
+    ws.onerror = (error) => {
+        console.error('WebSocket ошибка:', error);
+        updateConnectionStatus(false);
+        // Fallback на HTTP polling при ошибке
+        if (!updateTimer) {
+            console.log('Переключение на HTTP polling из-за ошибки WebSocket');
+            useWebSocket = false;
+            loadMeasurement();
+            startAutoUpdate();
+        }
+    };
+    
+    ws.onclose = () => {
+        console.log('WebSocket отключен, переключение на HTTP polling');
+        updateConnectionStatus(false);
+        // Переключаемся на HTTP polling
+        useWebSocket = false;
+        if (!updateTimer) {
+            loadMeasurement();
+            startAutoUpdate();
+        }
+        // Пытаемся переподключиться через 5 секунд
+        setTimeout(() => {
+            if (useWebSocket) {
+                initWebSocket();
+            }
+        }, 5000);
+    };
+}
+
+// === Автоматическое обновление (HTTP polling fallback) ===
 function startAutoUpdate() {
     if (updateTimer) clearInterval(updateTimer);
 

@@ -9,6 +9,7 @@
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <ArduinoOTA.h>
+#include <AsyncWebSocket.h>
 #include "config.h"  // Нужно для WEB_SERVER_PORT, DEFAULT_SSID, DEFAULT_PASSWORD
 
 /**
@@ -20,10 +21,13 @@
 class WebServerManager {
 private:
     AsyncWebServer *server;  // Используем AsyncWebServer (поддерживаемый форк)
+    AsyncWebSocket *webSocket;  // WebSocket для real-time обновлений
     String ssid;
     String password;
     bool apMode;  // Режим точки доступа
     String deviceIP;
+    unsigned long lastWebSocketUpdate;  // Время последнего обновления через WebSocket
+    unsigned long webSocketUpdateInterval;  // Интервал обновления (мс)
 
     // Callback функции для получения данных от основной программы
     std::function<float()> alcoholCallback;
@@ -80,6 +84,11 @@ private:
     std::function<String()> getReceiverStatusCallback;               // -> JSON статус приемников
     std::function<bool(uint8_t)> switchReceiverCallback;             // (receiverId) -> success
     std::function<bool(const String&)> setOverflowActionCallback;    // (action) -> success
+    std::function<bool(bool)> setAutoSwitchCallback;                 // (enabled) -> success
+    std::function<String()> getReceiverConfigCallback;               // -> JSON конфигурация приемников
+    std::function<bool(const String&)> setReceiverConfigCallback;     // (JSON) -> success
+    std::function<String()> getSensorsStatusCallback;                // -> JSON статус всех датчиков
+    std::function<bool(uint8_t, bool)> setSensorEnabledCallback;      // (sensorId, enabled) -> success
 
     /**
      * @brief Настроить маршруты веб-сервера
@@ -90,6 +99,16 @@ private:
      * @brief Настроить OTA обновления
      */
     void setupOTA();
+    
+    /**
+     * @brief Настроить WebSocket
+     */
+    void setupWebSocket();
+    
+    /**
+     * @brief Отправить данные через WebSocket всем подключенным клиентам
+     */
+    void broadcastWebSocketData();
 
     /**
      * @brief Генерация HTML главной страницы
@@ -348,11 +367,41 @@ public:
      * @brief Установить callback для установки действия при переполнении
      */
     void setSetOverflowActionCallback(std::function<bool(const String&)> callback);
+    
+    /**
+     * @brief Установить callback для включения/выключения авто-переключения
+     */
+    void setSetAutoSwitchCallback(std::function<bool(bool)> callback);
+    
+    /**
+     * @brief Установить callback для получения конфигурации приемников
+     */
+    void setGetReceiverConfigCallback(std::function<String()> callback);
+    
+    /**
+     * @brief Установить callback для сохранения конфигурации приемников
+     */
+    void setSetReceiverConfigCallback(std::function<bool(const String&)> callback);
+    
+    /**
+     * @brief Установить callback для получения статуса всех датчиков
+     */
+    void setGetSensorsStatusCallback(std::function<String()> callback);
+    
+    /**
+     * @brief Установить callback для включения/выключения датчика
+     */
+    void setSetSensorEnabledCallback(std::function<bool(uint8_t, bool)> callback);
 
     /**
      * @brief Обработка OTA и веб-сервера (вызывать в loop)
      */
     void handle();
+    
+    /**
+     * @brief Обновление WebSocket (вызывать периодически)
+     */
+    void updateWebSocket();
     
     /**
      * @brief Обработка OTA (вызывать в loop) - для обратной совместимости

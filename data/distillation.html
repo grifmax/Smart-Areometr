@@ -125,12 +125,16 @@
                         <button class="btn-primary" onclick="exportCSV()" id="exportCSVBtn" disabled>
                             <span>📊</span> Экспорт CSV
                         </button>
+                        <button class="btn-primary" onclick="exportPDF()" id="exportPDFBtn" disabled>
+                            <span>📄</span> Экспорт PDF
+                        </button>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="/js/theme.js"></script>
     <script src="/js/distillation.js"></script>
 </body>

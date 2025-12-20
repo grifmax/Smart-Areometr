@@ -417,6 +417,99 @@ curl http://192.168.4.1/api/logs
 
 ---
 
+### 20. Приемники: Получить статус
+
+Возвращает статус всех приемников.
+
+**Endpoint:** `GET /api/receivers/status`
+
+**Response:**
+```json
+{
+  "enabled": true,
+  "auto_switch": true,
+  "active_receiver": 0,
+  "overflow_action": "switch_next",
+  "receivers": [
+    {
+      "id": 0,
+      "name": "Головы",
+      "active": true,
+      "overflowing": false,
+      "current_volume": 150.5,
+      "max_volume": 1000,
+      "fraction": "HEADS",
+      "gpio_pin": 7
+    }
+  ]
+}
+```
+
+---
+
+### 21. Приемники: Переключить
+
+Переключает на указанный приемник.
+
+**Endpoint:** `POST /api/receivers/switch`
+
+**Request Body:**
+```json
+{
+  "receiver_id": 0
+}
+```
+
+---
+
+### 22. Датчики: Получить статус
+
+Возвращает статус всех датчиков (мультисенсорный режим).
+
+**Endpoint:** `GET /api/sensors/status`
+
+**Response:**
+```json
+{
+  "sensor_count": 2,
+  "max_sensors": 4,
+  "average_alcohol": 45.2,
+  "average_temperature": 22.5,
+  "anomalies_detected": false,
+  "sensors": [
+    {
+      "id": 0,
+      "name": "Основной датчик",
+      "alcohol": 45.0,
+      "temperature": 22.0,
+      "stability": 95,
+      "raw_value": 12345,
+      "active": true,
+      "calibrated": true,
+      "last_update": 1234567890
+    }
+  ]
+}
+```
+
+---
+
+### 23. Датчики: Включить/выключить
+
+Включает или выключает датчик.
+
+**Endpoint:** `POST /api/sensors/enable`
+
+**Request Body:**
+```json
+{
+  "sensor_id": 0,
+  "enabled": true
+}
+```
+
+---
+
 ### Очистить логи
 
 **Endpoint:** `DELETE /api/logs` (реализовано)

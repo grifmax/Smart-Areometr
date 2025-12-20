@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 // Версия прошивки
-#define FIRMWARE_VERSION "2.1.6"
+#define FIRMWARE_VERSION "2.1.14"
 
 // Пины подключения OLED дисплея (I2C)
 // Для модулей ESP32-C3 с встроенным OLED обычно используются GPIO5 и GPIO6
@@ -90,6 +90,10 @@
 #define MQTT_TOPIC_COMMAND "command"
 #define MQTT_TOPIC_CALIBRATE "calibrate"
 #define MQTT_TOPIC_SET_THRESHOLDS "set_thresholds"
+#define MQTT_TOPIC_RECEIVER_SWITCH "receiver/switch"
+#define MQTT_TOPIC_RECEIVER_CONFIG "receiver/config"
+#define MQTT_TOPIC_RECEIVER_AUTO_SWITCH "receiver/auto_switch"
+#define MQTT_TOPIC_RECEIVER_OVERFLOW_ACTION "receiver/overflow_action"
 
 // Home Assistant Discovery
 #define MQTT_HA_DISCOVERY_ENABLED true
@@ -120,5 +124,10 @@
 #define RECEIVER_2_PIN GPIO_NUM_8  // GPIO для управления приемником 2 (тело)
 #define RECEIVER_3_PIN GPIO_NUM_9  // GPIO для управления приемником 3 (хвосты)
 #define RECEIVER_MAX_VOLUME_ML 1000.0f  // Максимальный объем приемника (мл)
+
+// === Power Management Configuration ===
+#define POWER_MANAGER_ENABLED true
+#define DEEP_SLEEP_ENABLED false  // Отключено по умолчанию (можно включить через настройки)
+#define DEEP_SLEEP_INTERVAL_SEC 60  // Интервал глубокого сна (секунды)
 
 #endif // CONFIG_H

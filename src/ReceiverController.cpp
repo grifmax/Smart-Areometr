@@ -3,6 +3,7 @@
 #include "config.h"
 #include "ReceiverController.h"
 #include "LevelDetector.h"
+#include <ArduinoJson.h>
 
 ReceiverController::ReceiverController()
     : activeReceiverId(0), levelDetector(nullptr),
@@ -232,4 +233,42 @@ void ReceiverController::configureReceiver(uint8_t receiverId, const String& nam
         pinMode((int)pin, OUTPUT);
         digitalWrite((int)pin, LOW);
     }
+}
+
+String ReceiverController::getStatusJSON() const {
+    JsonDocument doc;
+    doc["enabled"] = enabled;
+    doc["auto_switch"] = autoSwitchEnabled;
+    doc["active_receiver"] = (activeReceiverId < RECEIVER_COUNT) ? activeReceiverId : 255;
+    
+    String overflowActionStr;
+    switch (overflowAction) {
+        case OverflowAction::SWITCH_NEXT:
+            overflowActionStr = "switch_next";
+            break;
+        case OverflowAction::STOP:
+            overflowActionStr = "stop";
+            break;
+        case OverflowAction::NOTIFY_ONLY:
+            overflowActionStr = "notify_only";
+            break;
+    }
+    doc["overflow_action"] = overflowActionStr;
+    
+    JsonArray receiversArray = doc["receivers"].to<JsonArray>();
+    for (uint8_t i = 0; i < RECEIVER_COUNT; i++) {
+        JsonObject receiverObj = receiversArray.add<JsonObject>();
+        receiverObj["id"] = receivers[i].id;
+        receiverObj["name"] = receivers[i].name;
+        receiverObj["active"] = receivers[i].isActive;
+        receiverObj["overflowing"] = receivers[i].isOverflowing;
+        receiverObj["current_volume"] = receivers[i].currentVolume;
+        receiverObj["max_volume"] = receivers[i].maxVolume;
+        receiverObj["fraction"] = FractionDetector::getFractionName(receivers[i].associatedFraction);
+        receiverObj["gpio_pin"] = (int)receivers[i].controlPin;
+    }
+    
+    String json;
+    serializeJson(doc, json);
+    return json;
 }

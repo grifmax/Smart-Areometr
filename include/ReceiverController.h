@@ -177,6 +177,16 @@ public:
      */
     void configureReceiver(uint8_t receiverId, const String& name, 
                           gpio_num_t pin, float maxVolume, Fraction fraction);
+    
+    /**
+     * @brief Получить JSON статус всех приемников
+     */
+    String getStatusJSON() const;
+    
+    /**
+     * @brief Получить количество приемников
+     */
+    uint8_t getReceiverCount() const { return RECEIVER_COUNT; }
 };
 
 #endif // RECEIVER_CONTROLLER_H

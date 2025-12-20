@@ -45,12 +45,21 @@ private:
     String topicBatteryVoltage;
     String topicBatteryPercent;
     String topicBatteryStatus;
+    String topicReceiverStatus;
+    String topicReceiverSwitch;
+    String topicReceiverEvent;
 
     // Callbacks для получения данных
     std::function<float()> alcoholCallback;
     std::function<float()> temperatureCallback;
     std::function<uint8_t()> stabilityCallback;
     std::function<String()> fractionCallback;
+    std::function<String()> receiverStatusCallback;
+    
+    // Callbacks для управления приемниками
+    std::function<bool(uint8_t)> switchReceiverCallback;
+    std::function<bool(bool)> setAutoSwitchCallback;
+    std::function<bool(const String&)> setOverflowActionCallback;
 
     /**
      * @brief Попытка переподключения к MQTT broker
@@ -171,6 +180,43 @@ public:
      * @param charging Статус зарядки
      */
     void publishBatteryStatus(float voltage, uint8_t percent, bool charging);
+    
+    /**
+     * @brief Публикация статуса приемников
+     */
+    void publishReceiverStatus();
+    
+    /**
+     * @brief Публикация события переключения приемника
+     * @param receiverId ID приемника
+     */
+    void publishReceiverSwitch(uint8_t receiverId);
+    
+    /**
+     * @brief Публикация события переполнения
+     * @param receiverId ID приемника
+     */
+    void publishReceiverOverflow(uint8_t receiverId);
+    
+    /**
+     * @brief Установить callback для получения статуса приемников
+     */
+    void setReceiverStatusCallback(std::function<String()> callback);
+    
+    /**
+     * @brief Установить callback для переключения приемника
+     */
+    void setSwitchReceiverCallback(std::function<bool(uint8_t)> callback);
+    
+    /**
+     * @brief Установить callback для включения/выключения авто-переключения
+     */
+    void setSetAutoSwitchCallback(std::function<bool(bool)> callback);
+    
+    /**
+     * @brief Установить callback для установки действия при переполнении
+     */
+    void setSetOverflowActionCallback(std::function<bool(const String&)> callback);
 };
 
 #endif // MQTT_BRIDGE_H
