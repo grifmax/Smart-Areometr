@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Калибровка - Smart Areometr</title>
     <script>
         // Применяем тему ДО загрузки CSS, чтобы избежать мигания
-        (function() {
+        (function () {
             const savedTheme = localStorage.getItem('theme') || 'light';
             if (savedTheme !== 'light') {
                 document.documentElement.setAttribute('data-theme', savedTheme);
@@ -17,6 +18,7 @@
     <link rel="stylesheet" href="/css/calibration.css">
     <link rel="stylesheet" href="/css/dilution-calculator.css">
 </head>
+
 <body>
     <div class="container">
         <!-- Навигация -->
@@ -25,7 +27,7 @@
                 <span class="icon">🍺</span>
                 <span class="brand-text">Smart Areometr</span>
             </div>
-            <div class="nav-menu">
+            <div class="nav-menu" id="navMenu">
                 <a href="/" class="nav-link">Главная</a>
                 <a href="/calibration.html" class="nav-link active">Калибровка</a>
                 <a href="/fractions.html" class="nav-link">Фракции</a>
@@ -34,6 +36,13 @@
                 <a href="/mqtt.html" class="nav-link">MQTT</a>
                 <a href="/settings.html" class="nav-link">Настройки</a>
                 <a href="/logs.html" class="nav-link">Логи</a>
+            </div>
+            <div class="nav-controls">
+                <button class="hamburger-btn" id="hamburgerBtn" aria-label="Меню">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
             </div>
         </nav>
 
@@ -122,8 +131,10 @@
                             <div class="quick-buttons">
                                 <button class="btn btn-small" onclick="setQuickPoint(0, 'Вода')">Вода (0%)</button>
                                 <button class="btn btn-small" onclick="setQuickPoint(40, 'Водка')">Водка (40%)</button>
-                                <button class="btn btn-small" onclick="setQuickPoint(70, 'Спирт 70%')">Спирт (70%)</button>
-                                <button class="btn btn-small" onclick="setQuickPoint(96, 'Спирт 96%')">Спирт (96%)</button>
+                                <button class="btn btn-small" onclick="setQuickPoint(70, 'Спирт 70%')">Спирт
+                                    (70%)</button>
+                                <button class="btn btn-small" onclick="setQuickPoint(96, 'Спирт 96%')">Спирт
+                                    (96%)</button>
                             </div>
                         </div>
 
@@ -216,9 +227,12 @@
                 <div class="card-body">
                     <!-- Вкладки режимов -->
                     <div class="calc-tabs">
-                        <button class="tab-btn active" data-mode="water" onclick="switchCalcMode('water')">С водой</button>
-                        <button class="tab-btn" data-mode="solution" onclick="switchCalcMode('solution')">Два раствора</button>
-                        <button class="tab-btn" data-mode="reverse" onclick="switchCalcMode('reverse')">Обратный расчет</button>
+                        <button class="tab-btn active" data-mode="water" onclick="switchCalcMode('water')">С
+                            водой</button>
+                        <button class="tab-btn" data-mode="solution" onclick="switchCalcMode('solution')">Два
+                            раствора</button>
+                        <button class="tab-btn" data-mode="reverse" onclick="switchCalcMode('reverse')">Обратный
+                            расчет</button>
                     </div>
 
                     <!-- Режим: Смешивание с водой -->
@@ -231,22 +245,26 @@
                             </div>
                             <div class="calc-form-group">
                                 <label for="waterSourceStrength">Крепость исходного спирта (%):</label>
-                                <input type="number" id="waterSourceStrength" min="0" max="100" step="0.1" value="96" required>
+                                <input type="number" id="waterSourceStrength" min="0" max="100" step="0.1" value="96"
+                                    required>
                                 <small>Крепость исходного спирта (0-100%)</small>
                             </div>
                             <div class="calc-form-group">
                                 <label for="waterTargetStrength">Целевая крепость (%):</label>
-                                <input type="number" id="waterTargetStrength" min="0" max="100" step="0.1" value="40" required>
+                                <input type="number" id="waterTargetStrength" min="0" max="100" step="0.1" value="40"
+                                    required>
                                 <small>Желаемая крепость после разбавления</small>
                             </div>
                             <div class="calc-form-group">
                                 <label for="waterTempAlcohol">Температура спирта (°C):</label>
-                                <input type="number" id="waterTempAlcohol" min="0" max="50" step="0.1" value="20" required>
+                                <input type="number" id="waterTempAlcohol" min="0" max="50" step="0.1" value="20"
+                                    required>
                                 <small>Температура исходного спирта</small>
                             </div>
                             <div class="calc-form-group">
                                 <label for="waterTempWater">Температура воды (°C):</label>
-                                <input type="number" id="waterTempWater" min="0" max="50" step="0.1" value="20" required>
+                                <input type="number" id="waterTempWater" min="0" max="50" step="0.1" value="20"
+                                    required>
                                 <small>Температура воды для разбавления</small>
                             </div>
                         </div>
@@ -370,12 +388,14 @@
                             </div>
                             <div class="calc-form-group">
                                 <label for="reverseTargetStrength">Целевая крепость (%):</label>
-                                <input type="number" id="reverseTargetStrength" min="0" max="100" step="0.1" value="40" required>
+                                <input type="number" id="reverseTargetStrength" min="0" max="100" step="0.1" value="40"
+                                    required>
                                 <small>Желаемая крепость раствора</small>
                             </div>
                             <div class="calc-form-group">
                                 <label for="reverseSourceStrength">Крепость исходного спирта (%):</label>
-                                <input type="number" id="reverseSourceStrength" min="0" max="100" step="0.1" value="96" required>
+                                <input type="number" id="reverseSourceStrength" min="0" max="100" step="0.1" value="96"
+                                    required>
                                 <small>Крепость имеющегося спирта</small>
                             </div>
                             <div class="calc-form-group">
@@ -423,7 +443,8 @@
                     </div>
 
                     <div class="calc-hint">
-                        <strong>💡 Важно:</strong> Калькулятор учитывает объемную контракцию (уменьшение объема при смешивании) 
+                        <strong>💡 Важно:</strong> Калькулятор учитывает объемную контракцию (уменьшение объема при
+                        смешивании)
                         и температурные поправки по ГОСТ 3639-79. Результаты точны для температур 10-30°C.
                     </div>
                 </div>
@@ -439,22 +460,23 @@
     <script src="/js/theme.js"></script>
     <script src="/js/calibration.js"></script>
     <script src="/js/dilution-calculator.js" onerror="console.error('Failed to load dilution-calculator.js');"></script>
-    <script src="/js/dilution-calculator-ui.js" onerror="console.error('Failed to load dilution-calculator-ui.js');"></script>
+    <script src="/js/dilution-calculator-ui.js"
+        onerror="console.error('Failed to load dilution-calculator-ui.js');"></script>
     <script>
         // Проверка загрузки модулей
-        window.addEventListener('load', function() {
+        window.addEventListener('load', function () {
             console.log('Page loaded. Checking calculator functions...');
             console.log('switchCalcMode:', typeof window.switchCalcMode);
             console.log('calculateWaterDilution:', typeof window.calculateWaterDilution);
             console.log('diluteWithWater:', typeof window.diluteWithWater);
-            
+
             // Проверяем наличие форм
             const forms = document.querySelectorAll('.calc-form');
             console.log('Found forms:', forms.length);
             forms.forEach((form, i) => {
                 console.log(`Form ${i}:`, form.id, 'active:', form.classList.contains('active'));
             });
-            
+
             // Если функции не загружены, показываем предупреждение
             if (typeof window.switchCalcMode === 'undefined' || typeof window.diluteWithWater === 'undefined') {
                 console.error('⚠️ Калькулятор не загружен! Проверьте, что файлы загружены на устройство.');
@@ -469,4 +491,5 @@
         });
     </script>
 </body>
+
 </html>

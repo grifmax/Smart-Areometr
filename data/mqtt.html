@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MQTT Настройки - Smart Areometr</title>
     <script>
         // Применяем тему ДО загрузки CSS, чтобы избежать мигания
-        (function() {
+        (function () {
             const savedTheme = localStorage.getItem('theme') || 'light';
             if (savedTheme !== 'light') {
                 document.documentElement.setAttribute('data-theme', savedTheme);
@@ -15,6 +16,7 @@
     </script>
     <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body>
     <div class="container">
         <!-- Навигация -->
@@ -23,14 +25,22 @@
                 <span class="icon">🍺</span>
                 <span class="brand-text">Smart Areometr</span>
             </div>
-            <div class="nav-menu">
+            <div class="nav-menu" id="navMenu">
                 <a href="/" class="nav-link">Главная</a>
                 <a href="/calibration.html" class="nav-link">Калибровка</a>
                 <a href="/fractions.html" class="nav-link">Фракции</a>
                 <a href="/receivers.html" class="nav-link">Приемники</a>
+                <a href="/distillation.html" class="nav-link">Сессии</a>
                 <a href="/mqtt.html" class="nav-link active">MQTT</a>
                 <a href="/settings.html" class="nav-link">Настройки</a>
                 <a href="/logs.html" class="nav-link">Логи</a>
+            </div>
+            <div class="nav-controls">
+                <button class="hamburger-btn" id="hamburgerBtn" aria-label="Меню">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
             </div>
         </nav>
 
@@ -241,4 +251,5 @@ Server: 192.168.1.100:1883</code></pre>
     <script src="/js/theme.js"></script>
     <script src="/js/mqtt.js"></script>
 </body>
+
 </html>

@@ -17,17 +17,17 @@ const ThemeManager = {
         if (savedTheme && this.themes[savedTheme]) {
             this.currentTheme = savedTheme;
         }
-        
+
         // Применяем тему СРАЗУ (синхронно)
         this.applyThemeSync(this.currentTheme);
-        
+
         // Создаем переключатель тем (если не на странице настроек)
         this.createThemeSwitcher();
-        
+
         // Обновляем карточки тем в настройках (если они уже есть в HTML)
         this.updateThemeCards();
     },
-    
+
     // Синхронное применение темы (без обновления графиков и других асинхронных операций)
     applyThemeSync(theme) {
         if (!this.themes[theme]) {
@@ -35,7 +35,7 @@ const ThemeManager = {
         }
 
         this.currentTheme = theme;
-        
+
         // Устанавливаем атрибут data-theme на html элементе СРАЗУ
         if (theme === 'light') {
             document.documentElement.removeAttribute('data-theme');
@@ -53,25 +53,25 @@ const ThemeManager = {
 
         console.log('Применение темы:', theme);
         this.currentTheme = theme;
-        
+
         // Устанавливаем атрибут data-theme на html элементе
         this.applyThemeSync(theme);
-        
+
         // Сохраняем в localStorage
         localStorage.setItem('theme', theme);
-        
+
         // Обновляем переключатель
         this.updateThemeSwitcher();
-        
+
         // Обновляем карточки тем в настройках
         this.updateThemeCards();
-        
+
         // Обновляем графики если они есть
         this.updateChartsTheme();
-        
+
         console.log('Тема применена:', theme);
     },
-    
+
     // Обновление карточек тем в настройках
     updateThemeCards() {
         const cards = document.querySelectorAll('.theme-option-card');
@@ -149,9 +149,17 @@ const ThemeManager = {
 
         themeContainer.appendChild(themeBtn);
         themeContainer.appendChild(themeMenu);
-        
-        // Добавляем в навигацию
-        navbar.appendChild(themeContainer);
+
+        // Добавляем в nav-controls перед гамбургер-кнопкой (если есть)
+        const navControls = document.querySelector('.nav-controls');
+        const hamburgerBtn = document.getElementById('hamburgerBtn');
+
+        if (navControls && hamburgerBtn) {
+            navControls.insertBefore(themeContainer, hamburgerBtn);
+        } else if (navbar) {
+            // Fallback: добавляем в навигацию как раньше
+            navbar.appendChild(themeContainer);
+        }
 
         // Закрываем меню при клике вне его
         document.addEventListener('click', (e) => {
@@ -167,12 +175,12 @@ const ThemeManager = {
             console.error('ThemeManager: контейнер для карточек тем не найден');
             return;
         }
-        
+
         // Очищаем контейнер на случай повторной инициализации
         container.innerHTML = '';
-        
+
         console.log('ThemeManager: создание карточек тем, количество тем:', Object.keys(this.themes).length);
-        
+
         Object.entries(this.themes).forEach(([key, theme]) => {
             const option = document.createElement('button');
             option.className = `theme-option-card ${key === this.currentTheme ? 'active' : ''}`;
@@ -187,7 +195,7 @@ const ThemeManager = {
             `;
             container.appendChild(option);
         });
-        
+
         console.log('ThemeManager: карточки тем созданы, количество:', container.children.length);
     },
 
@@ -205,7 +213,7 @@ const ThemeManager = {
         const themeBtn = document.querySelector('.theme-switcher-btn');
         const themeText = document.querySelector('.theme-switcher-text');
         const themeIcon = document.querySelector('.theme-switcher-icon');
-        
+
         if (themeBtn && themeText && themeIcon) {
             themeText.textContent = this.themes[this.currentTheme].name;
             themeIcon.textContent = this.themes[this.currentTheme].icon;
@@ -244,7 +252,7 @@ const ThemeManager = {
         const root = getComputedStyle(document.documentElement);
         const primaryColor = root.getPropertyValue('--primary-color').trim();
         const warningColor = root.getPropertyValue('--warning-color').trim() || '#FF9800';
-        
+
         // Обновляем графики если они существуют
         if (window.alcoholChart && window.alcoholChart.data && window.alcoholChart.data.datasets) {
             const dataset = window.alcoholChart.data.datasets[0];
@@ -277,7 +285,7 @@ const ThemeManager = {
 // Инициализация при загрузке DOM
 function initThemeManager() {
     ThemeManager.init();
-    
+
     // Дополнительная проверка для страницы настроек
     // Если контейнер есть, но карточки не созданы, создаем их
     const checkAndCreate = () => {
@@ -292,7 +300,7 @@ function initThemeManager() {
             // console.log('ThemeManager: контейнер themeOptionsGrid не найден');
         }
     };
-    
+
     // Проверяем сразу и с небольшой задержкой
     checkAndCreate();
     setTimeout(checkAndCreate, 100);
@@ -313,6 +321,58 @@ if (document.readyState === 'loading') {
 // Экспорт для глобального доступа
 window.ThemeManager = ThemeManager;
 
+// === Управление мобильным меню ===
+const MobileMenuManager = {
+    hamburgerBtn: null,
+    navMenu: null,
+
+    init() {
+        this.hamburgerBtn = document.getElementById('hamburgerBtn');
+        this.navMenu = document.getElementById('navMenu');
+
+        if (!this.hamburgerBtn || !this.navMenu) {
+            return;
+        }
+
+        // Обработчик клика на гамбургер-кнопку
+        this.hamburgerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleMenu();
+        });
+
+        // Закрываем меню при клике на ссылку
+        this.navMenu.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                this.closeMenu();
+            });
+        });
+
+        // Закрываем меню при клике вне его
+        document.addEventListener('click', (e) => {
+            if (!this.navMenu.contains(e.target) && !this.hamburgerBtn.contains(e.target)) {
+                this.closeMenu();
+            }
+        });
+
+        // Закрываем меню при изменении размера окна (переход на десктоп)
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) {
+                this.closeMenu();
+            }
+        });
+    },
+
+    toggleMenu() {
+        this.hamburgerBtn.classList.toggle('active');
+        this.navMenu.classList.toggle('show');
+    },
+
+    closeMenu() {
+        this.hamburgerBtn.classList.remove('active');
+        this.navMenu.classList.remove('show');
+    }
+};
+
 // Дополнительная инициализация для страницы настроек
 // Вызывается после полной загрузки страницы
 window.addEventListener('load', () => {
@@ -321,4 +381,10 @@ window.addEventListener('load', () => {
         console.log('ThemeManager: финальная проверка и создание карточек');
         window.ThemeManager.createThemeOptionsInSettings(themeOptionsGrid);
     }
+
+    // Инициализация мобильного меню
+    MobileMenuManager.init();
 });
+
+// Экспорт для глобального доступа
+window.MobileMenuManager = MobileMenuManager;

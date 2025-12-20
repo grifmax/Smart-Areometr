@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Логи - Smart Areometr</title>
     <script>
         // Применяем тему ДО загрузки CSS, чтобы избежать мигания
-        (function() {
+        (function () {
             const savedTheme = localStorage.getItem('theme') || 'light';
             if (savedTheme !== 'light') {
                 document.documentElement.setAttribute('data-theme', savedTheme);
@@ -16,6 +17,7 @@
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/logs.css">
 </head>
+
 <body>
     <div class="container">
         <!-- Навигация -->
@@ -24,7 +26,7 @@
                 <span class="icon">🍺</span>
                 <span class="brand-text">Smart Areometr</span>
             </div>
-            <div class="nav-menu">
+            <div class="nav-menu" id="navMenu">
                 <a href="/" class="nav-link">Главная</a>
                 <a href="/calibration.html" class="nav-link">Калибровка</a>
                 <a href="/fractions.html" class="nav-link">Фракции</a>
@@ -33,6 +35,13 @@
                 <a href="/mqtt.html" class="nav-link">MQTT</a>
                 <a href="/settings.html" class="nav-link">Настройки</a>
                 <a href="/logs.html" class="nav-link active">Логи</a>
+            </div>
+            <div class="nav-controls">
+                <button class="hamburger-btn" id="hamburgerBtn" aria-label="Меню">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
             </div>
         </nav>
 
@@ -109,7 +118,8 @@
             </div>
 
             <!-- Графики -->
-            <div class="charts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-bottom: 20px;">
+            <div class="charts-grid"
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-bottom: 20px;">
                 <div class="card chart-card">
                     <div class="card-header">
                         <h3>График крепости</h3>
@@ -177,4 +187,5 @@
     <script src="/js/theme.js"></script>
     <script src="/js/logs.js"></script>
 </body>
+
 </html>

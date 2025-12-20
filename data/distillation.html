@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Сессии перегонки - Smart Areometr</title>
     <script>
         // Применяем тему ДО загрузки CSS, чтобы избежать мигания
-        (function() {
+        (function () {
             const savedTheme = localStorage.getItem('theme') || 'light';
             if (savedTheme !== 'light') {
                 document.documentElement.setAttribute('data-theme', savedTheme);
@@ -15,6 +16,7 @@
     </script>
     <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body>
     <div class="container">
         <!-- Навигация -->
@@ -23,7 +25,7 @@
                 <span class="icon">🍺</span>
                 <span class="brand-text">Smart Areometr</span>
             </div>
-            <div class="nav-menu">
+            <div class="nav-menu" id="navMenu">
                 <a href="/" class="nav-link">Главная</a>
                 <a href="/calibration.html" class="nav-link">Калибровка</a>
                 <a href="/fractions.html" class="nav-link">Фракции</a>
@@ -32,6 +34,13 @@
                 <a href="/mqtt.html" class="nav-link">MQTT</a>
                 <a href="/settings.html" class="nav-link">Настройки</a>
                 <a href="/logs.html" class="nav-link">Логи</a>
+            </div>
+            <div class="nav-controls">
+                <button class="hamburger-btn" id="hamburgerBtn" aria-label="Меню">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
             </div>
         </nav>
 
@@ -51,7 +60,7 @@
                                 <span id="statusDetails"></span>
                             </div>
                         </div>
-                        
+
                         <div class="session-form" id="sessionForm">
                             <div class="form-group">
                                 <label for="sessionName">Название сессии:</label>
@@ -125,4 +134,5 @@
     <script src="/js/theme.js"></script>
     <script src="/js/distillation.js"></script>
 </body>
+
 </html>

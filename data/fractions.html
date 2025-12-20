@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Управление фракциями - Smart Areometr</title>
     <script>
         // Применяем тему ДО загрузки CSS, чтобы избежать мигания
-        (function() {
+        (function () {
             const savedTheme = localStorage.getItem('theme') || 'light';
             if (savedTheme !== 'light') {
                 document.documentElement.setAttribute('data-theme', savedTheme);
@@ -15,6 +16,7 @@
     </script>
     <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body>
     <div class="container">
         <!-- Навигация -->
@@ -23,14 +25,22 @@
                 <span class="icon">🍺</span>
                 <span class="brand-text">Smart Areometr</span>
             </div>
-            <div class="nav-menu">
+            <div class="nav-menu" id="navMenu">
                 <a href="/" class="nav-link">Главная</a>
                 <a href="/calibration.html" class="nav-link">Калибровка</a>
                 <a href="/fractions.html" class="nav-link active">Фракции</a>
                 <a href="/receivers.html" class="nav-link">Приемники</a>
+                <a href="/distillation.html" class="nav-link">Сессии</a>
                 <a href="/mqtt.html" class="nav-link">MQTT</a>
                 <a href="/settings.html" class="nav-link">Настройки</a>
                 <a href="/logs.html" class="nav-link">Логи</a>
+            </div>
+            <div class="nav-controls">
+                <button class="hamburger-btn" id="hamburgerBtn" aria-label="Меню">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
             </div>
         </nav>
 
@@ -83,14 +93,16 @@
                                 <input type="radio" name="detectionMode" value="mash" checked>
                                 <span class="radio-content">
                                     <strong>🌾 Из браги (Mash Mode)</strong>
-                                    <small>Автоматическое определение фракций по крепости. Подходит для первой перегонки из браги.</small>
+                                    <small>Автоматическое определение фракций по крепости. Подходит для первой перегонки
+                                        из браги.</small>
                                 </span>
                             </label>
                             <label class="radio-label">
                                 <input type="radio" name="detectionMode" value="monitoring">
                                 <span class="radio-content">
                                     <strong>📊 Мониторинг (Monitoring Mode)</strong>
-                                    <small>Только телеметрия и графики. Подходит для ректификации и второй перегонки, где крепость постоянна.</small>
+                                    <small>Только телеметрия и графики. Подходит для ректификации и второй перегонки,
+                                        где крепость постоянна.</small>
                                 </span>
                             </label>
                         </div>
@@ -180,7 +192,8 @@
 
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary btn-large">Сохранить пороги</button>
-                            <button type="button" class="btn btn-secondary" onclick="loadDefaults()">Сбросить к умолчанию</button>
+                            <button type="button" class="btn btn-secondary" onclick="loadDefaults()">Сбросить к
+                                умолчанию</button>
                         </div>
                     </form>
                 </div>
@@ -210,7 +223,8 @@
                 <div class="card-body">
                     <div class="mqtt-integration">
                         <h3>События смены фракций (MQTT):</h3>
-                        <p>Smart Areometr публикует события смены фракций в MQTT топик <code>distillery/areometer/fraction</code></p>
+                        <p>Smart Areometr публикует события смены фракций в MQTT топик
+                            <code>distillery/areometer/fraction</code></p>
 
                         <h4>Подписка на события:</h4>
                         <pre><code>mosquitto_sub -h 192.168.1.100 -t "distillery/areometer/fraction" -v</code></pre>
@@ -236,7 +250,8 @@
 
                         <div class="warning-box" style="margin-top: var(--spacing);">
                             <strong>⚠️ Важно:</strong>
-                            <p>Smart Areometr только определяет фракции и отправляет события. Управление клапанами и приемниками выполняет внешняя автоматика через подписку на MQTT.</p>
+                            <p>Smart Areometr только определяет фракции и отправляет события. Управление клапанами и
+                                приемниками выполняет внешняя автоматика через подписку на MQTT.</p>
                         </div>
                     </div>
                 </div>
@@ -276,15 +291,18 @@
 
                         <div class="fraction-info">
                             <h4 style="color: #FBC02D;">🟡 Хвосты (Tails)</h4>
-                            <p><strong>Крепость:</strong> <78%</p>
-                            <p><strong>Состав:</strong> Сивушные масла, изоамилол</p>
-                            <p><strong>Признаки:</strong> Помутнение при разбавлении, сивушный запах</p>
-                            <p><strong>Использование:</strong> Добавить в следующую брагу для повторной перегонки</p>
+                            <p><strong>Крепость:</strong>
+                                <78%< /p>
+                                    <p><strong>Состав:</strong> Сивушные масла, изоамилол</p>
+                                    <p><strong>Признаки:</strong> Помутнение при разбавлении, сивушный запах</p>
+                                    <p><strong>Использование:</strong> Добавить в следующую брагу для повторной
+                                        перегонки</p>
                         </div>
 
                         <h3>Рекомендуемая стратегия отбора:</h3>
                         <ol>
-                            <li><strong>Первач:</strong> Отбирать первые 30-50 мл в отдельную емкость и утилизировать</li>
+                            <li><strong>Первач:</strong> Отбирать первые 30-50 мл в отдельную емкость и утилизировать
+                            </li>
                             <li><strong>Головы:</strong> Отбирать до крепости 85% в отдельную емкость</li>
                             <li><strong>Тело:</strong> Отбирать 85% → 78% в питьевую емкость</li>
                             <li><strong>Хвосты:</strong> Отбирать 78% → стоп в отдельную емкость</li>
@@ -304,4 +322,5 @@
     <script src="/js/theme.js"></script>
     <script src="/js/fractions.js"></script>
 </body>
+
 </html>
