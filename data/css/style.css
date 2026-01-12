@@ -1,5 +1,6 @@
 /* === Глобальные стили === */
 :root {
+    /* Светлая тема (по умолчанию) */
     --primary-color: #2196F3;
     --primary-dark: #1976D2;
     --primary-light: #BBDEFB;
@@ -16,6 +17,96 @@
     --shadow-hover: 0 4px 8px rgba(0,0,0,0.15);
     --radius: 8px;
     --spacing: 16px;
+}
+
+/* Темная тема */
+[data-theme="dark"] {
+    --primary-color: #64B5F6;
+    --primary-dark: #42A5F5;
+    --primary-light: #1E3A5F;
+    --secondary-color: #FFB74D;
+    --success-color: #66BB6A;
+    --danger-color: #EF5350;
+    --warning-color: #FFA726;
+    --bg-color: #121212;
+    --card-bg: #1E1E1E;
+    --text-primary: #E0E0E0;
+    --text-secondary: #B0B0B0;
+    --border-color: #333333;
+    --shadow: 0 2px 4px rgba(0,0,0,0.3);
+    --shadow-hover: 0 4px 8px rgba(0,0,0,0.5);
+}
+
+/* Голубая тема */
+[data-theme="blue"] {
+    --primary-color: #03A9F4;
+    --primary-dark: #0288D1;
+    --primary-light: #B3E5FC;
+    --secondary-color: #00BCD4;
+    --success-color: #4CAF50;
+    --danger-color: #F44336;
+    --warning-color: #FF9800;
+    --bg-color: #E3F2FD;
+    --card-bg: #FFFFFF;
+    --text-primary: #01579B;
+    --text-secondary: #0277BD;
+    --border-color: #B3E5FC;
+    --shadow: 0 2px 4px rgba(3, 169, 244, 0.2);
+    --shadow-hover: 0 4px 8px rgba(3, 169, 244, 0.3);
+}
+
+/* Пурпурная тема */
+[data-theme="purple"] {
+    --primary-color: #9C27B0;
+    --primary-dark: #7B1FA2;
+    --primary-light: #E1BEE7;
+    --secondary-color: #BA68C8;
+    --success-color: #4CAF50;
+    --danger-color: #F44336;
+    --warning-color: #FF9800;
+    --bg-color: #F3E5F5;
+    --card-bg: #FFFFFF;
+    --text-primary: #4A148C;
+    --text-secondary: #6A1B9A;
+    --border-color: #E1BEE7;
+    --shadow: 0 2px 4px rgba(156, 39, 176, 0.2);
+    --shadow-hover: 0 4px 8px rgba(156, 39, 176, 0.3);
+}
+
+/* Киберпанк тема */
+[data-theme="cyberpunk"] {
+    --primary-color: #00FF41;
+    --primary-dark: #00CC33;
+    --primary-light: #1A3A2A;
+    --secondary-color: #FF00FF;
+    --success-color: #00FF41;
+    --danger-color: #FF0040;
+    --warning-color: #FFB800;
+    --bg-color: #0A0A0A;
+    --card-bg: #1A1A1A;
+    --text-primary: #00FF41;
+    --text-secondary: #00CC33;
+    --border-color: #00FF41;
+    --shadow: 0 2px 4px rgba(0, 255, 65, 0.3);
+    --shadow-hover: 0 4px 8px rgba(0, 255, 65, 0.5);
+}
+
+/* Оранжевая тема (Claude Code style) */
+[data-theme="orange"] {
+    --primary-color: #FF6B35;
+    --primary-dark: #E85A2B;
+    --primary-light: #FFE5DC;
+    --secondary-color: #FF8C42;
+    --success-color: #4CAF50;
+    --danger-color: #F44336;
+    --warning-color: #FF9800;
+    --bg-color: #FFF8F5;
+    --card-bg: #FFFFFF;
+    --text-primary: #2C1810;
+    --text-secondary: #8B4513;
+    --border-color: #FFE5DC;
+    --shadow: 0 2px 4px rgba(255, 107, 53, 0.15);
+    --shadow-hover: 0 4px 8px rgba(255, 107, 53, 0.25);
 }
 
 * {
@@ -165,7 +256,7 @@ body {
 .primary-value {
     text-align: center;
     padding: calc(var(--spacing) * 2);
-    background: linear-gradient(135deg, var(--primary-light) 0%, #E3F2FD 100%);
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-color) 100%);
     border-radius: var(--radius);
 }
 
@@ -384,18 +475,112 @@ body {
     font-size: 0.875rem;
 }
 
+/* === Гамбургер-кнопка === */
+.hamburger-btn {
+    display: none;
+    flex-direction: column;
+    justify-content: space-around;
+    width: 28px;
+    height: 24px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    z-index: 1001;
+}
+
+.hamburger-btn span {
+    display: block;
+    width: 100%;
+    height: 3px;
+    background: var(--text-primary);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+.hamburger-btn.active span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+}
+
+.hamburger-btn.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger-btn.active span:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
+}
+
+/* === Навигационные контролы (для мобильного) === */
+.nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 /* === Адаптивность === */
 @media (max-width: 768px) {
     .navbar {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--spacing);
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: space-between;
+        position: relative;
+    }
+
+    .hamburger-btn {
+        display: flex;
     }
 
     .nav-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
         width: 100%;
         flex-direction: column;
-        gap: 8px;
+        gap: 4px;
+        background: var(--card-bg);
+        box-shadow: var(--shadow);
+        padding: var(--spacing);
+        z-index: 1000;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .nav-menu.show {
+        display: flex;
+    }
+
+    .nav-menu .nav-link {
+        padding: 12px 16px;
+        width: 100%;
+        text-align: center;
+    }
+
+    .nav-brand .brand-text {
+        display: none;
+    }
+
+    .theme-switcher {
+        position: static;
+    }
+
+    .theme-switcher-btn {
+        padding: 8px 12px;
+    }
+    
+    .theme-switcher-text {
+        display: none;
+    }
+
+    .theme-menu {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        border-radius: var(--radius) var(--radius) 0 0;
     }
 
     .charts-grid {
@@ -466,4 +651,300 @@ body {
 .loading {
     opacity: 0.6;
     pointer-events: none;
+}
+
+/* === Переключатель тем === */
+.theme-switcher {
+    position: relative;
+    display: inline-block;
+}
+
+.theme-switcher-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--bg-color);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.theme-switcher-btn:hover {
+    background: var(--primary-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.theme-switcher-icon {
+    font-size: 1.25rem;
+}
+
+.theme-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-hover);
+    min-width: 180px;
+    z-index: 1000;
+    display: none;
+    overflow: hidden;
+}
+
+.theme-menu.show {
+    display: block;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.theme-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    color: var(--text-primary);
+}
+
+.theme-option:hover {
+    background: var(--bg-color);
+}
+
+.theme-option.active {
+    background: var(--primary-light);
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.theme-option-icon {
+    font-size: 1.25rem;
+    width: 24px;
+    text-align: center;
+}
+
+.theme-option-name {
+    flex: 1;
+}
+
+.theme-option-check {
+    font-size: 1rem;
+    color: var(--primary-color);
+    display: none;
+}
+
+.theme-option.active .theme-option-check {
+    display: block;
+}
+
+/* === Опции тем в настройках === */
+.theme-options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--spacing);
+    margin-top: var(--spacing);
+}
+
+.theme-option-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: calc(var(--spacing) * 1.5);
+    background: var(--bg-color);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    min-height: 120px;
+}
+
+.theme-option-card:hover {
+    background: var(--primary-light);
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+.theme-option-card.active {
+    background: var(--primary-light);
+    border-color: var(--primary-color);
+    border-width: 3px;
+    box-shadow: var(--shadow-hover);
+}
+
+.theme-option-card-icon {
+    font-size: 3rem;
+}
+
+.theme-option-card-name {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.theme-option-card-check {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 1.25rem;
+    color: var(--primary-color);
+    display: none;
+    font-weight: bold;
+}
+
+.theme-option-card.active .theme-option-card-check {
+    display: block;
+}
+
+.theme-settings p {
+    margin-bottom: var(--spacing);
+    color: var(--text-secondary);
+}
+
+/* === Стили для приемников (receivers.html) === */
+.receivers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing);
+    margin-top: var(--spacing);
+}
+
+.receiver-card {
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: var(--spacing);
+    transition: all 0.3s ease;
+}
+
+.receiver-card.active {
+    border-color: var(--primary-color);
+    background: var(--primary-light);
+    box-shadow: var(--shadow-hover);
+}
+
+.receiver-card.overflowing {
+    border-color: var(--danger-color);
+    background: rgba(244, 67, 54, 0.1);
+}
+
+.receiver-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: calc(var(--spacing) * 0.5);
+}
+
+.receiver-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.receiver-body {
+    margin-top: var(--spacing);
+}
+
+.receiver-info {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 0.5);
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.info-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.info-value {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: calc(var(--spacing) * 0.5);
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--primary-color);
+    transition: width 0.3s ease;
+}
+
+.receiver-card.overflowing .progress-fill {
+    background: var(--danger-color);
+}
+
+.level-detector-status {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing) * 0.75);
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: calc(var(--spacing) * 0.5);
+    background: var(--bg-color);
+    border-radius: var(--radius);
+}
+
+.status-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.status-value {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+#levelChart {
+    max-height: 300px;
+    margin-top: var(--spacing);
+}
+
+.button-group {
+    display: flex;
+    gap: var(--spacing);
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .receivers-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .button-group {
+        flex-direction: column;
+    }
+    
+    .button-group .btn {
+        width: 100%;
+    }
 }

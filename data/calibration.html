@@ -1,12 +1,24 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Калибровка - Smart Areometr</title>
+    <script>
+        // Применяем тему ДО загрузки CSS, чтобы избежать мигания
+        (function () {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme !== 'light') {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/calibration.css">
+    <link rel="stylesheet" href="/css/dilution-calculator.css">
 </head>
+
 <body>
     <div class="container">
         <!-- Навигация -->
@@ -15,11 +27,22 @@
                 <span class="icon">🍺</span>
                 <span class="brand-text">Smart Areometr</span>
             </div>
-            <div class="nav-menu">
+            <div class="nav-menu" id="navMenu">
                 <a href="/" class="nav-link">Главная</a>
                 <a href="/calibration.html" class="nav-link active">Калибровка</a>
+                <a href="/fractions.html" class="nav-link">Фракции</a>
+                <a href="/receivers.html" class="nav-link">Приемники</a>
+                <a href="/distillation.html" class="nav-link">Сессии</a>
+                <a href="/mqtt.html" class="nav-link">MQTT</a>
                 <a href="/settings.html" class="nav-link">Настройки</a>
                 <a href="/logs.html" class="nav-link">Логи</a>
+            </div>
+            <div class="nav-controls">
+                <button class="hamburger-btn" id="hamburgerBtn" aria-label="Меню">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
             </div>
         </nav>
 
@@ -108,8 +131,10 @@
                             <div class="quick-buttons">
                                 <button class="btn btn-small" onclick="setQuickPoint(0, 'Вода')">Вода (0%)</button>
                                 <button class="btn btn-small" onclick="setQuickPoint(40, 'Водка')">Водка (40%)</button>
-                                <button class="btn btn-small" onclick="setQuickPoint(70, 'Спирт 70%')">Спирт (70%)</button>
-                                <button class="btn btn-small" onclick="setQuickPoint(96, 'Спирт 96%')">Спирт (96%)</button>
+                                <button class="btn btn-small" onclick="setQuickPoint(70, 'Спирт 70%')">Спирт
+                                    (70%)</button>
+                                <button class="btn btn-small" onclick="setQuickPoint(96, 'Спирт 96%')">Спирт
+                                    (96%)</button>
                             </div>
                         </div>
 
@@ -190,13 +215,237 @@
                             <li>Все растворы должны иметь одинаковую температуру (±2°C)</li>
                             <li>Используйте точные спиртометры для проверки крепости</li>
                         </ul>
+                    </div>
+                </div>
+            </div>
 
-                        <h3>Формулы для приготовления растворов:</h3>
-                        <div class="formula-box">
-                            <p><strong>V<sub>спирта</sub> = (C<sub>нужная</sub> × V<sub>общий</sub>) / C<sub>спирта</sub></strong></p>
-                            <p><strong>V<sub>воды</sub> = V<sub>общий</sub> - V<sub>спирта</sub></strong></p>
-                            <small>Например, для 100мл раствора 40% из спирта 96%: V<sub>спирта</sub> = (40×100)/96 = 41.7мл</small>
+            <!-- Калькулятор разбавления спирта -->
+            <div class="card" id="dilutionCalculator">
+                <div class="card-header">
+                    <h2>🧪 Калькулятор разбавления</h2>
+                </div>
+                <div class="card-body">
+                    <!-- Вкладки режимов -->
+                    <div class="calc-tabs">
+                        <button class="tab-btn active" data-mode="water" onclick="switchCalcMode('water')">С
+                            водой</button>
+                        <button class="tab-btn" data-mode="solution" onclick="switchCalcMode('solution')">Два
+                            раствора</button>
+                        <button class="tab-btn" data-mode="reverse" onclick="switchCalcMode('reverse')">Обратный
+                            расчет</button>
+                    </div>
+
+                    <!-- Режим: Смешивание с водой -->
+                    <div class="calc-form active" id="calcFormWater">
+                        <div class="calc-form-grid">
+                            <div class="calc-form-group">
+                                <label for="waterVolumeAlcohol">Объем исходного спирта (мл):</label>
+                                <input type="number" id="waterVolumeAlcohol" min="0" step="0.1" value="100" required>
+                                <small>Объем спирта, который нужно разбавить</small>
+                            </div>
+                            <div class="calc-form-group">
+                                <label for="waterSourceStrength">Крепость исходного спирта (%):</label>
+                                <input type="number" id="waterSourceStrength" min="0" max="100" step="0.1" value="96"
+                                    required>
+                                <small>Крепость исходного спирта (0-100%)</small>
+                            </div>
+                            <div class="calc-form-group">
+                                <label for="waterTargetStrength">Целевая крепость (%):</label>
+                                <input type="number" id="waterTargetStrength" min="0" max="100" step="0.1" value="40"
+                                    required>
+                                <small>Желаемая крепость после разбавления</small>
+                            </div>
+                            <div class="calc-form-group">
+                                <label for="waterTempAlcohol">Температура спирта (°C):</label>
+                                <input type="number" id="waterTempAlcohol" min="0" max="50" step="0.1" value="20"
+                                    required>
+                                <small>Температура исходного спирта</small>
+                            </div>
+                            <div class="calc-form-group">
+                                <label for="waterTempWater">Температура воды (°C):</label>
+                                <input type="number" id="waterTempWater" min="0" max="50" step="0.1" value="20"
+                                    required>
+                                <small>Температура воды для разбавления</small>
+                            </div>
                         </div>
+                        <div class="calc-form-actions">
+                            <button class="btn btn-primary btn-large" onclick="calculateWaterDilution()">
+                                🧮 Рассчитать
+                            </button>
+                        </div>
+                        <div class="calc-error" id="waterError"></div>
+                        <div class="calc-results" id="waterResults">
+                            <div class="calc-results-title">Результаты расчета:</div>
+                            <div class="calc-results-grid">
+                                <div class="calc-result-item calc-result-highlight">
+                                    <div class="calc-result-label">Объем воды</div>
+                                    <div class="calc-result-value" id="waterResultVolumeWater">--</div>
+                                    <span class="calc-result-unit">мл</span>
+                                </div>
+                                <div class="calc-result-item">
+                                    <div class="calc-result-label">Финальный объем</div>
+                                    <div class="calc-result-value" id="waterResultFinalVolume">--</div>
+                                    <span class="calc-result-unit">мл</span>
+                                </div>
+                                <div class="calc-result-item">
+                                    <div class="calc-result-label">Финальная крепость</div>
+                                    <div class="calc-result-value" id="waterResultFinalStrength">--</div>
+                                    <span class="calc-result-unit">%</span>
+                                </div>
+                            </div>
+                            <div class="calc-details">
+                                <div class="calc-detail-item">
+                                    <span class="calc-detail-label">Объемная контракция:</span>
+                                    <span class="calc-detail-value" id="waterResultContraction">--</span>
+                                </div>
+                                <div class="calc-detail-item">
+                                    <span class="calc-detail-label">Температурная поправка:</span>
+                                    <span class="calc-detail-value" id="waterResultTempCorrection">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Режим: Смешивание двух растворов -->
+                    <div class="calc-form" id="calcFormSolution">
+                        <div class="calc-form-grid">
+                            <div class="calc-form-group">
+                                <label for="sol1Volume">Объем первого раствора (мл):</label>
+                                <input type="number" id="sol1Volume" min="0" step="0.1" value="500" required>
+                                <small>Объем первого раствора</small>
+                            </div>
+                            <div class="calc-form-group">
+                                <label for="sol1Strength">Крепость первого раствора (%):</label>
+                                <input type="number" id="sol1Strength" min="0" max="100" step="0.1" value="40" required>
+                                <small>Крепость первого раствора</small>
+                            </div>
+                            <div class="calc-form-group">
+                                <label for="sol1Temp">Температура первого (°C):</label>
+                                <input type="number" id="sol1Temp" min="0" max="50" step="0.1" value="20" required>
+                                <small>Температура первого раствора</small>
+                            </div>
+                            <div class="calc-form-group">
+                                <label for="sol2Volume">Объем второго раствора (мл):</label>
+                                <input type="number" id="sol2Volume" min="0" step="0.1" value="500" required>
+                                <small>Объем второго раствора</small>
+                            </div>
+                            <div class="calc-form-group">
+                                <label for="sol2Strength">Крепость второго раствора (%):</label>
+                                <input type="number" id="sol2Strength" min="0" max="100" step="0.1" value="70" required>
+                                <small>Крепость второго раствора</small>
+                            </div>
+                            <div class="calc-form-group">
+                                <label for="sol2Temp">Температура второго (°C):</label>
+                                <input type="number" id="sol2Temp" min="0" max="50" step="0.1" value="20" required>
+                                <small>Температура второго раствора</small>
+                            </div>
+                        </div>
+                        <div class="calc-form-actions">
+                            <button class="btn btn-primary btn-large" onclick="calculateSolutionMix()">
+                                🧮 Рассчитать
+                            </button>
+                        </div>
+                        <div class="calc-error" id="solutionError"></div>
+                        <div class="calc-results" id="solutionResults">
+                            <div class="calc-results-title">Результаты расчета:</div>
+                            <div class="calc-results-grid">
+                                <div class="calc-result-item calc-result-highlight">
+                                    <div class="calc-result-label">Финальный объем</div>
+                                    <div class="calc-result-value" id="solutionResultFinalVolume">--</div>
+                                    <span class="calc-result-unit">мл</span>
+                                </div>
+                                <div class="calc-result-item calc-result-highlight">
+                                    <div class="calc-result-label">Финальная крепость</div>
+                                    <div class="calc-result-value" id="solutionResultFinalStrength">--</div>
+                                    <span class="calc-result-unit">%</span>
+                                </div>
+                                <div class="calc-result-item">
+                                    <div class="calc-result-label">Контракция</div>
+                                    <div class="calc-result-value" id="solutionResultContraction">--</div>
+                                    <span class="calc-result-unit">мл</span>
+                                </div>
+                            </div>
+                            <div class="calc-details">
+                                <div class="calc-detail-item">
+                                    <span class="calc-detail-label">Процент контракции:</span>
+                                    <span class="calc-detail-value" id="solutionResultContractionPercent">--</span>
+                                </div>
+                                <div class="calc-detail-item">
+                                    <span class="calc-detail-label">Общая масса этанола:</span>
+                                    <span class="calc-detail-value" id="solutionResultMassEthanol">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Режим: Обратный расчет -->
+                    <div class="calc-form" id="calcFormReverse">
+                        <div class="calc-form-grid">
+                            <div class="calc-form-group">
+                                <label for="reverseTargetVolume">Целевой объем раствора (мл):</label>
+                                <input type="number" id="reverseTargetVolume" min="0" step="0.1" value="1000" required>
+                                <small>Желаемый объем готового раствора</small>
+                            </div>
+                            <div class="calc-form-group">
+                                <label for="reverseTargetStrength">Целевая крепость (%):</label>
+                                <input type="number" id="reverseTargetStrength" min="0" max="100" step="0.1" value="40"
+                                    required>
+                                <small>Желаемая крепость раствора</small>
+                            </div>
+                            <div class="calc-form-group">
+                                <label for="reverseSourceStrength">Крепость исходного спирта (%):</label>
+                                <input type="number" id="reverseSourceStrength" min="0" max="100" step="0.1" value="96"
+                                    required>
+                                <small>Крепость имеющегося спирта</small>
+                            </div>
+                            <div class="calc-form-group">
+                                <label for="reverseTemp">Температура (°C):</label>
+                                <input type="number" id="reverseTemp" min="0" max="50" step="0.1" value="20" required>
+                                <small>Температура компонентов</small>
+                            </div>
+                        </div>
+                        <div class="calc-form-actions">
+                            <button class="btn btn-primary btn-large" onclick="calculateReverse()">
+                                🧮 Рассчитать
+                            </button>
+                        </div>
+                        <div class="calc-error" id="reverseError"></div>
+                        <div class="calc-results" id="reverseResults">
+                            <div class="calc-results-title">Результаты расчета:</div>
+                            <div class="calc-results-grid">
+                                <div class="calc-result-item calc-result-highlight">
+                                    <div class="calc-result-label">Объем спирта</div>
+                                    <div class="calc-result-value" id="reverseResultVolumeAlcohol">--</div>
+                                    <span class="calc-result-unit">мл</span>
+                                </div>
+                                <div class="calc-result-item calc-result-highlight">
+                                    <div class="calc-result-label">Объем воды</div>
+                                    <div class="calc-result-value" id="reverseResultVolumeWater">--</div>
+                                    <span class="calc-result-unit">мл</span>
+                                </div>
+                                <div class="calc-result-item">
+                                    <div class="calc-result-label">Контракция</div>
+                                    <div class="calc-result-value" id="reverseResultContraction">--</div>
+                                    <span class="calc-result-unit">мл</span>
+                                </div>
+                            </div>
+                            <div class="calc-details">
+                                <div class="calc-detail-item">
+                                    <span class="calc-detail-label">Финальная крепость:</span>
+                                    <span class="calc-detail-value" id="reverseResultFinalStrength">--</span>
+                                </div>
+                                <div class="calc-detail-item">
+                                    <span class="calc-detail-label">Процент контракции:</span>
+                                    <span class="calc-detail-value" id="reverseResultContractionPercent">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="calc-hint">
+                        <strong>💡 Важно:</strong> Калькулятор учитывает объемную контракцию (уменьшение объема при
+                        смешивании)
+                        и температурные поправки по ГОСТ 3639-79. Результаты точны для температур 10-30°C.
                     </div>
                 </div>
             </div>
@@ -208,6 +457,39 @@
         </footer>
     </div>
 
+    <script src="/js/theme.js"></script>
     <script src="/js/calibration.js"></script>
+    <script src="/js/dilution-calculator.js" onerror="console.error('Failed to load dilution-calculator.js');"></script>
+    <script src="/js/dilution-calculator-ui.js"
+        onerror="console.error('Failed to load dilution-calculator-ui.js');"></script>
+    <script>
+        // Проверка загрузки модулей
+        window.addEventListener('load', function () {
+            console.log('Page loaded. Checking calculator functions...');
+            console.log('switchCalcMode:', typeof window.switchCalcMode);
+            console.log('calculateWaterDilution:', typeof window.calculateWaterDilution);
+            console.log('diluteWithWater:', typeof window.diluteWithWater);
+
+            // Проверяем наличие форм
+            const forms = document.querySelectorAll('.calc-form');
+            console.log('Found forms:', forms.length);
+            forms.forEach((form, i) => {
+                console.log(`Form ${i}:`, form.id, 'active:', form.classList.contains('active'));
+            });
+
+            // Если функции не загружены, показываем предупреждение
+            if (typeof window.switchCalcMode === 'undefined' || typeof window.diluteWithWater === 'undefined') {
+                console.error('⚠️ Калькулятор не загружен! Проверьте, что файлы загружены на устройство.');
+                const calcCard = document.getElementById('dilutionCalculator');
+                if (calcCard) {
+                    const warning = document.createElement('div');
+                    warning.style.cssText = 'padding: 16px; background: #FFEBEE; border-left: 4px solid #F44336; margin: 16px 0; border-radius: 8px;';
+                    warning.innerHTML = '<strong>⚠️ Ошибка загрузки калькулятора</strong><br>Файлы калькулятора не найдены. Убедитесь, что файлы <code>dilution-calculator.js</code> и <code>dilution-calculator-ui.js</code> загружены на устройство в папку <code>/data/js/</code>';
+                    calcCard.querySelector('.card-body').insertBefore(warning, calcCard.querySelector('.card-body').firstChild);
+                }
+            }
+        });
+    </script>
 </body>
+
 </html>

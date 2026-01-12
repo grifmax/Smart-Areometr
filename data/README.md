@@ -9,16 +9,26 @@ data/
 ├── index.html              # Главная страница
 ├── calibration.html        # Страница калибровки
 ├── settings.html           # Страница настроек
+├── mqtt.html               # Настройки MQTT
+├── fractions.html          # Управление фракциями
+├── distillation.html       # Сессии дистилляции
 ├── logs.html               # История измерений
 ├── css/
 │   ├── style.css           # Основные стили
 │   ├── calibration.css     # Стили калибровки
+│   ├── dilution-calculator.css  # Стили калькулятора разбавления
 │   └── logs.css            # Стили логов
 └── js/
     ├── app.js              # Главная страница JS
     ├── calibration.js      # Калибровка JS
     ├── settings.js         # Настройки JS
-    └── logs.js             # Логи JS
+    ├── mqtt.js             # MQTT настройки JS
+    ├── fractions.js        # Фракции JS
+    ├── distillation.js     # Сессии дистилляции JS
+    ├── logs.js             # Логи JS
+    ├── theme.js            # Управление темами
+    ├── dilution-calculator.js      # Калькулятор разбавления
+    └── dilution-calculator-ui.js  # UI калькулятора
 ```
 
 ## Возможности
@@ -42,6 +52,26 @@ data/
 - Температурная компенсация
 - Системная информация
 - OTA обновления
+- Выбор темы оформления (светлая, темная, голубая, пурпурная, киберпанк, оранжевая)
+
+### MQTT (/mqtt.html)
+- Настройка подключения к MQTT broker
+- Статус подключения в реальном времени
+- Список топиков (скрывающийся раздел)
+- Примеры использования (скрывающийся раздел)
+- Тест подключения
+
+### Фракции (/fractions.html)
+- Настройка порогов для определения фракций
+- Режимы работы (mash/monitoring)
+- Визуализация текущей фракции
+- Калькулятор разбавления
+
+### Сессии дистилляции (/distillation.html)
+- Создание и управление сессиями
+- Отслеживание объема браги и собранного дистиллята
+- Статистика по фракциям
+- История сессий
 
 ### Логи (/logs.html)
 - Таблица всех измерений
@@ -148,7 +178,7 @@ npx html-minifier index.html --output index.min.html \
 Системная информация
 ```json
 {
-  "firmware": "1.0.0",
+  "firmware": "2.1.4",
   "wifi_mode": "AP",
   "ssid": "Areometr_AP",
   "ip": "192.168.4.1",
@@ -183,6 +213,33 @@ npx html-minifier index.html --output index.min.html \
 ### DELETE /api/logs
 Очистить историю измерений
 
+### GET /api/mqtt/status
+Получить статус MQTT подключения
+
+### GET /api/mqtt/config
+Получить конфигурацию MQTT
+
+### POST /api/mqtt/config
+Сохранить конфигурацию MQTT
+
+### POST /api/mqtt/test
+Тест MQTT подключения
+
+### GET /api/fractions/thresholds
+Получить пороги фракций
+
+### POST /api/fractions/thresholds
+Установить пороги фракций
+
+### GET /api/session/active
+Получить активную сессию дистилляции
+
+### POST /api/session/start
+Начать сессию дистилляции
+
+### POST /api/session/stop
+Остановить сессию дистилляции
+
 ## Размер файлов
 
 | Файл | Размер | Минифицированный |
@@ -191,14 +248,24 @@ npx html-minifier index.html --output index.min.html \
 | calibration.html | ~7 KB | ~4 KB |
 | settings.html | ~6 KB | ~4 KB |
 | logs.html | ~5 KB | ~3 KB |
+| mqtt.html | ~6 KB | ~4 KB |
+| fractions.html | ~7 KB | ~4 KB |
+| distillation.html | ~8 KB | ~5 KB |
 | style.css | ~8 KB | ~5 KB |
 | calibration.css | ~3 KB | ~2 KB |
 | logs.css | ~3 KB | ~2 KB |
+| dilution-calculator.css | ~2 KB | ~1 KB |
 | app.js | ~6 KB | ~4 KB |
 | calibration.js | ~4 KB | ~3 KB |
 | settings.js | ~5 KB | ~3 KB |
+| mqtt.js | ~4 KB | ~3 KB |
+| fractions.js | ~5 KB | ~3 KB |
+| distillation.js | ~6 KB | ~4 KB |
 | logs.js | ~4 KB | ~3 KB |
-| **Итого** | **~56 KB** | **~36 KB** |
+| theme.js | ~3 KB | ~2 KB |
+| dilution-calculator.js | ~4 KB | ~3 KB |
+| dilution-calculator-ui.js | ~3 KB | ~2 KB |
+| **Итого** | **~96 KB** | **~60 KB** |
 
 ESP32-C3 имеет 4MB Flash, LittleFS займет ~300KB включая файловую систему.
 
@@ -219,11 +286,11 @@ ESP32-C3 имеет 4MB Flash, LittleFS займет ~300KB включая фа�
 
 ## Будущие улучшения
 
-- [ ] Темная тема
+- [x] Темная тема (реализовано 6 тем)
 - [ ] PWA поддержка (работа офлайн)
 - [ ] WebSocket для real-time обновлений
 - [ ] Многоязычность (EN/RU)
-- [ ] Графики с историей за период
+- [x] Графики с историей за период (реализовано)
 - [ ] Экспорт в PDF
 - [ ] Уведомления браузера
 - [ ] Голосовые команды

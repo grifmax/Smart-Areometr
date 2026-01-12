@@ -1,11 +1,22 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MQTT Настройки - Smart Areometr</title>
+    <script>
+        // Применяем тему ДО загрузки CSS, чтобы избежать мигания
+        (function () {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme !== 'light') {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body>
     <div class="container">
         <!-- Навигация -->
@@ -14,12 +25,22 @@
                 <span class="icon">🍺</span>
                 <span class="brand-text">Smart Areometr</span>
             </div>
-            <div class="nav-menu">
+            <div class="nav-menu" id="navMenu">
                 <a href="/" class="nav-link">Главная</a>
                 <a href="/calibration.html" class="nav-link">Калибровка</a>
-                <a href="/settings.html" class="nav-link">Настройки</a>
+                <a href="/fractions.html" class="nav-link">Фракции</a>
+                <a href="/receivers.html" class="nav-link">Приемники</a>
+                <a href="/distillation.html" class="nav-link">Сессии</a>
                 <a href="/mqtt.html" class="nav-link active">MQTT</a>
+                <a href="/settings.html" class="nav-link">Настройки</a>
                 <a href="/logs.html" class="nav-link">Логи</a>
+            </div>
+            <div class="nav-controls">
+                <button class="hamburger-btn" id="hamburgerBtn" aria-label="Меню">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
             </div>
         </nav>
 
@@ -63,42 +84,36 @@
                 </div>
                 <div class="card-body">
                     <form id="mqttSettingsForm" onsubmit="saveMQTTSettings(event)">
-                        <div class="form-grid-two">
-                            <div class="form-group">
-                                <label for="mqttEnabled">
-                                    <input type="checkbox" id="mqttEnabled">
-                                    Включить MQTT
-                                </label>
-                                <small>Включить публикацию данных в MQTT broker</small>
-                            </div>
+                        <div class="form-group">
+                            <label for="mqttEnabled">
+                                <input type="checkbox" id="mqttEnabled">
+                                Включить MQTT
+                            </label>
+                            <small>Включить публикацию данных в MQTT broker</small>
                         </div>
 
-                        <div class="form-grid-two">
-                            <div class="form-group">
-                                <label for="mqttServer">Адрес broker:</label>
-                                <input type="text" id="mqttServer" placeholder="192.168.1.100" required>
-                                <small>IP адрес или доменное имя MQTT broker</small>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="mqttPort">Порт:</label>
-                                <input type="number" id="mqttPort" value="1883" min="1" max="65535" required>
-                                <small>Обычно 1883 (без SSL) или 8883 (с SSL)</small>
-                            </div>
+                        <div class="form-group">
+                            <label for="mqttServer">Адрес broker:</label>
+                            <input type="text" id="mqttServer" placeholder="192.168.1.100" required>
+                            <small>IP адрес или доменное имя MQTT broker</small>
                         </div>
 
-                        <div class="form-grid-two">
-                            <div class="form-group">
-                                <label for="mqttUser">Пользователь:</label>
-                                <input type="text" id="mqttUser" placeholder="Оставьте пустым если не требуется">
-                                <small>Имя пользователя (опционально)</small>
-                            </div>
+                        <div class="form-group">
+                            <label for="mqttPort">Порт:</label>
+                            <input type="number" id="mqttPort" value="1883" min="1" max="65535" required>
+                            <small>Обычно 1883 (без SSL) или 8883 (с SSL)</small>
+                        </div>
 
-                            <div class="form-group">
-                                <label for="mqttPassword">Пароль:</label>
-                                <input type="password" id="mqttPassword" placeholder="••••••••">
-                                <small>Пароль (опционально)</small>
-                            </div>
+                        <div class="form-group">
+                            <label for="mqttUser">Пользователь:</label>
+                            <input type="text" id="mqttUser" placeholder="Оставьте пустым если не требуется">
+                            <small>Имя пользователя (опционально)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="mqttPassword">Пароль:</label>
+                            <input type="password" id="mqttPassword" placeholder="••••••••">
+                            <small>Пароль (опционально)</small>
                         </div>
 
                         <div class="form-group">
@@ -113,24 +128,22 @@
                             <small>Префикс для всех топиков</small>
                         </div>
 
-                        <div class="form-grid-two">
-                            <div class="form-group">
-                                <label for="mqttPublishInterval">Интервал публикации (сек):</label>
-                                <input type="number" id="mqttPublishInterval" value="5" min="1" max="60">
-                                <small>Как часто публиковать данные</small>
-                            </div>
+                        <div class="form-group">
+                            <label for="mqttPublishInterval">Интервал публикации (сек):</label>
+                            <input type="number" id="mqttPublishInterval" value="5" min="1" max="60">
+                            <small>Как часто публиковать данные</small>
+                        </div>
 
-                            <div class="form-group">
-                                <label for="haDiscovery">
-                                    <input type="checkbox" id="haDiscovery" checked>
-                                    Home Assistant Discovery
-                                </label>
-                                <small>Автоматическое обнаружение в HA</small>
-                            </div>
+                        <div class="form-group">
+                            <label for="haDiscovery">
+                                <input type="checkbox" id="haDiscovery" checked>
+                                Home Assistant Discovery
+                            </label>
+                            <small>Автоматическое обнаружение в HA</small>
                         </div>
 
                         <div class="form-actions">
-                            <button type="submit" class="btn btn-primary btn-large">Сохранить настройки</button>
+                            <button type="submit" class="btn btn-primary">Сохранить настройки</button>
                         </div>
                     </form>
                 </div>
@@ -142,51 +155,54 @@
                     <h2>📡 MQTT Топики</h2>
                 </div>
                 <div class="card-body">
-                    <div class="topics-info">
-                        <h3>Публикуемые топики:</h3>
-                        <ul class="topics-list">
-                            <li>
-                                <code id="topicState">distillery/areometer/state</code>
-                                <span class="topic-desc">- Полное состояние (JSON)</span>
-                            </li>
-                            <li>
-                                <code id="topicAlcohol">distillery/areometer/alcohol</code>
-                                <span class="topic-desc">- Крепость (%)</span>
-                            </li>
-                            <li>
-                                <code id="topicTemp">distillery/areometer/temperature</code>
-                                <span class="topic-desc">- Температура (°C)</span>
-                            </li>
-                            <li>
-                                <code id="topicStability">distillery/areometer/stability</code>
-                                <span class="topic-desc">- Стабильность сигнала (%)</span>
-                            </li>
-                            <li>
-                                <code id="topicFraction">distillery/areometer/fraction</code>
-                                <span class="topic-desc">- Текущая фракция</span>
-                            </li>
-                            <li>
-                                <code id="topicAvail">distillery/areometer/availability</code>
-                                <span class="topic-desc">- Доступность (online/offline)</span>
-                            </li>
-                        </ul>
+                    <details class="collapsible-section">
+                        <summary class="collapsible-summary">Показать топики</summary>
+                        <div class="topics-info">
+                            <h3>Публикуемые топики:</h3>
+                            <ul class="topics-list">
+                                <li>
+                                    <code id="topicState">distillery/areometer/state</code>
+                                    <span class="topic-desc">- Полное состояние (JSON)</span>
+                                </li>
+                                <li>
+                                    <code id="topicAlcohol">distillery/areometer/alcohol</code>
+                                    <span class="topic-desc">- Крепость (%)</span>
+                                </li>
+                                <li>
+                                    <code id="topicTemp">distillery/areometer/temperature</code>
+                                    <span class="topic-desc">- Температура (°C)</span>
+                                </li>
+                                <li>
+                                    <code id="topicStability">distillery/areometer/stability</code>
+                                    <span class="topic-desc">- Стабильность сигнала (%)</span>
+                                </li>
+                                <li>
+                                    <code id="topicFraction">distillery/areometer/fraction</code>
+                                    <span class="topic-desc">- Текущая фракция</span>
+                                </li>
+                                <li>
+                                    <code id="topicAvail">distillery/areometer/availability</code>
+                                    <span class="topic-desc">- Доступность (online/offline)</span>
+                                </li>
+                            </ul>
 
-                        <h3>Команды (подписка):</h3>
-                        <ul class="topics-list">
-                            <li>
-                                <code id="topicCommand">distillery/areometer/command</code>
-                                <span class="topic-desc">- Общие команды</span>
-                            </li>
-                            <li>
-                                <code id="topicCalibrate">distillery/areometer/calibrate</code>
-                                <span class="topic-desc">- Калибровка</span>
-                            </li>
-                            <li>
-                                <code id="topicThresholds">distillery/areometer/set_thresholds</code>
-                                <span class="topic-desc">- Настройка порогов</span>
-                            </li>
-                        </ul>
-                    </div>
+                            <h3>Команды (подписка):</h3>
+                            <ul class="topics-list">
+                                <li>
+                                    <code id="topicCommand">distillery/areometer/command</code>
+                                    <span class="topic-desc">- Общие команды</span>
+                                </li>
+                                <li>
+                                    <code id="topicCalibrate">distillery/areometer/calibrate</code>
+                                    <span class="topic-desc">- Калибровка</span>
+                                </li>
+                                <li>
+                                    <code id="topicThresholds">distillery/areometer/set_thresholds</code>
+                                    <span class="topic-desc">- Настройка порогов</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </details>
                 </div>
             </div>
 
@@ -196,15 +212,17 @@
                     <h2>💡 Примеры использования</h2>
                 </div>
                 <div class="card-body">
-                    <div class="examples">
-                        <h3>Mosquitto (подписка на все топики):</h3>
-                        <pre><code>mosquitto_sub -h 192.168.1.100 -t "distillery/areometer/#" -v</code></pre>
+                    <details class="collapsible-section">
+                        <summary class="collapsible-summary">Показать примеры</summary>
+                        <div class="examples">
+                            <h3>Mosquitto (подписка на все топики):</h3>
+                            <pre><code>mosquitto_sub -h 192.168.1.100 -t "distillery/areometer/#" -v</code></pre>
 
-                        <h3>Отправить команду (перезагрузка):</h3>
-                        <pre><code>mosquitto_pub -h 192.168.1.100 -t "distillery/areometer/command" -m "restart"</code></pre>
+                            <h3>Отправить команду (перезагрузка):</h3>
+                            <pre><code>mosquitto_pub -h 192.168.1.100 -t "distillery/areometer/command" -m "restart"</code></pre>
 
-                        <h3>Home Assistant (configuration.yaml):</h3>
-                        <pre><code># MQTT Discovery включен по умолчанию
+                            <h3>Home Assistant (configuration.yaml):</h3>
+                            <pre><code># MQTT Discovery включен по умолчанию
 # Датчики появятся автоматически в разделе "Интеграции"
 
 mqtt:
@@ -214,11 +232,12 @@ mqtt:
       unit_of_measurement: "%"
       icon: "mdi:bottle-wine"</code></pre>
 
-                        <h3>Node-RED (подписка):</h3>
-                        <pre><code>[mqtt in] → [function] → [debug]
+                            <h3>Node-RED (подписка):</h3>
+                            <pre><code>[mqtt in] → [function] → [debug]
 Topic: distillery/areometer/state
 Server: 192.168.1.100:1883</code></pre>
-                    </div>
+                        </div>
+                    </details>
                 </div>
             </div>
         </main>
@@ -229,6 +248,8 @@ Server: 192.168.1.100:1883</code></pre>
         </footer>
     </div>
 
+    <script src="/js/theme.js"></script>
     <script src="/js/mqtt.js"></script>
 </body>
+
 </html>

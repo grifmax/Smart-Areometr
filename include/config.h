@@ -2,16 +2,35 @@
 #define CONFIG_H
 
 // Версия прошивки
-#define FIRMWARE_VERSION "1.0.0"
+#define FIRMWARE_VERSION "2.1.14"
 
 // Пины подключения OLED дисплея (I2C)
-#define OLED_SDA 8
-#define OLED_SCL 9
+// Для модулей ESP32-C3 с встроенным OLED обычно используются GPIO5 и GPIO6
+#define OLED_SDA 5
+#define OLED_SCL 6
+// Размер дисплея: для 0.42" физически 72x40, но контроллер SSD1306 работает как 128x64
+// Нужно использовать 128x64 с offset для правильного отображения
+// См. https://github.com/peff74/ESP32-C3_OLED
 #define OLED_WIDTH 128
 #define OLED_HEIGHT 64
+#define OLED_OFFSET_X 30  // Смещение по X: (128-72)/2 = 28, округляем до 30
+#define OLED_OFFSET_Y 24  // Смещение по Y: увеличено для опускания изображения ниже
+#define OLED_PHYSICAL_WIDTH 72   // Физическая ширина дисплея
+#define OLED_PHYSICAL_HEIGHT 40  // Физическая высота дисплея
+// Адрес I2C: обычно 0x3C, иногда 0x3D
 #define OLED_ADDR 0x3C
 
-// Пин емкостного датчика (используем touch pin ESP32-C3)
+// === ADS1115 Configuration (16-битный внешний АЦП) ===
+#define USE_ADS1115 true              // Включить поддержку ADS1115
+#define ADS1115_I2C_ADDRESS 0x48     // Адрес I2C (0x48 по умолчанию, можно 0x49, 0x4A, 0x4B)
+// Примечание: GAIN_FOUR будет определен после включения ADS1115Driver.h
+// Используем значение 2 для GAIN_FOUR (см. Adafruit_ADS1X15.h)
+#define ADS1115_GAIN_VALUE 2         // GAIN_FOUR = 2 (усиление 4×, диапазон ±1.024V)
+#define ADS1115_DATA_RATE 128        // Скорость выборки: 8, 16, 32, 64, 128, 250, 475, 860 SPS
+#define ADS1115_CHANNEL_0 0           // Канал для электрода 1 (AIN0)
+#define ADS1115_CHANNEL_1 1           // Канал для электрода 2 (AIN1)
+
+// Пин емкостного датчика (используется только если USE_ADS1115 = false)
 #define CAPACITIVE_SENSOR_PIN 2  // GPIO2 поддерживает touch
 
 // Пин температурного датчика DS18B20 (OneWire)
@@ -71,9 +90,44 @@
 #define MQTT_TOPIC_COMMAND "command"
 #define MQTT_TOPIC_CALIBRATE "calibrate"
 #define MQTT_TOPIC_SET_THRESHOLDS "set_thresholds"
+#define MQTT_TOPIC_RECEIVER_SWITCH "receiver/switch"
+#define MQTT_TOPIC_RECEIVER_CONFIG "receiver/config"
+#define MQTT_TOPIC_RECEIVER_AUTO_SWITCH "receiver/auto_switch"
+#define MQTT_TOPIC_RECEIVER_OVERFLOW_ACTION "receiver/overflow_action"
 
 // Home Assistant Discovery
 #define MQTT_HA_DISCOVERY_ENABLED true
 #define MQTT_HA_DISCOVERY_PREFIX "homeassistant"
+
+// === Battery Monitor Configuration ===
+#define BATTERY_MONITOR_ENABLED true
+#define BATTERY_ADC_PIN GPIO_NUM_1  // Аналоговый пин для измерения напряжения батареи
+#define BATTERY_VOLTAGE_MIN 3.0f    // Минимальное напряжение (В) - полный разряд
+#define BATTERY_VOLTAGE_MAX 4.2f    // Максимальное напряжение (В) - полный заряд
+#define BATTERY_LOW_THRESHOLD 20    // Порог низкого заряда (%)
+#define BATTERY_CRITICAL_THRESHOLD 10  // Порог критического заряда (%)
+#define BATTERY_UPDATE_INTERVAL 30000  // Интервал обновления (мс) - 30 секунд
+#define BATTERY_DIVIDER_RATIO 2.0f  // Коэффициент делителя напряжения (если используется)
+
+// === Receiver Level Detection (ADS1115) ===
+#define RECEIVER_LEVEL_DETECTION_ENABLED true
+#define ADS1115_LEVEL_CHANNEL 2  // AIN2 для детекции уровня жидкости
+#define LEVEL_DETECTION_THRESHOLD 0.5f  // Пороговое напряжение (В) для срабатывания переполнения
+#define LEVEL_DETECTION_DEBOUNCE_MS 1000  // Задержка перед срабатыванием (мс) для устранения ложных срабатываний
+#define LEVEL_CHECK_INTERVAL 5000  // Интервал проверки уровня (мс)
+#define LEVEL_FILTER_SIZE 5  // Размер фильтра скользящего среднего для стабилизации показаний
+
+// === Receiver Control Configuration ===
+#define RECEIVER_CONTROL_ENABLED true
+#define RECEIVER_COUNT 3  // Количество приемников (головы, тело, хвосты)
+#define RECEIVER_1_PIN GPIO_NUM_7  // GPIO для управления приемником 1 (головы)
+#define RECEIVER_2_PIN GPIO_NUM_8  // GPIO для управления приемником 2 (тело)
+#define RECEIVER_3_PIN GPIO_NUM_9  // GPIO для управления приемником 3 (хвосты)
+#define RECEIVER_MAX_VOLUME_ML 1000.0f  // Максимальный объем приемника (мл)
+
+// === Power Management Configuration ===
+#define POWER_MANAGER_ENABLED true
+#define DEEP_SLEEP_ENABLED false  // Отключено по умолчанию (можно включить через настройки)
+#define DEEP_SLEEP_INTERVAL_SEC 60  // Интервал глубокого сна (секунды)
 
 #endif // CONFIG_H

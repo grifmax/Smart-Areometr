@@ -125,11 +125,623 @@ curl -X POST http://192.168.4.1/api/calibrate/alcohol
 
 ---
 
+### 5. MQTT: Получить статус подключения
+
+Возвращает информацию о состоянии MQTT подключения.
+
+**Endpoint:** `GET /api/mqtt/status`
+
+**Response:**
+```json
+{
+  "connected": true,
+  "enabled": true,
+  "server": "192.168.1.100",
+  "port": 1883,
+  "base_topic": "distillery/areometer",
+  "published_count": 1234
+}
+```
+
+**Поля:**
+- `connected` (boolean): Подключен ли к MQTT broker
+- `enabled` (boolean): Включен ли MQTT
+- `server` (string): Адрес MQTT broker
+- `port` (int): Порт MQTT broker
+- `base_topic` (string): Базовый топик
+- `published_count` (int): Количество опубликованных сообщений
+
+**Пример:**
+```bash
+curl http://192.168.4.1/api/mqtt/status
+```
+
+---
+
+### 6. MQTT: Получить конфигурацию
+
+Возвращает текущую конфигурацию MQTT.
+
+**Endpoint:** `GET /api/mqtt/config`
+
+**Response:**
+```json
+{
+  "enabled": true,
+  "server": "192.168.1.100",
+  "port": 1883,
+  "username": "user",
+  "client_id": "smart-areometr",
+  "base_topic": "distillery/areometer",
+  "publish_interval": 5,
+  "ha_discovery": true
+}
+```
+
+**Примечание:** Пароль не возвращается в целях безопасности.
+
+**Пример:**
+```bash
+curl http://192.168.4.1/api/mqtt/config
+```
+
+---
+
+### 7. MQTT: Сохранить конфигурацию
+
+Сохраняет новую конфигурацию MQTT.
+
+**Endpoint:** `POST /api/mqtt/config`
+
+**Request Body:**
+```json
+{
+  "enabled": true,
+  "server": "192.168.1.100",
+  "port": 1883,
+  "username": "user",
+  "password": "pass",
+  "client_id": "smart-areometr",
+  "base_topic": "distillery/areometer",
+  "publish_interval": 5,
+  "ha_discovery": true
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success"
+}
+```
+
+**Пример:**
+```bash
+curl -X POST http://192.168.4.1/api/mqtt/config \
+  -H "Content-Type: application/json" \
+  -d '{"enabled":true,"server":"192.168.1.100","port":1883}'
+```
+
+**Примечание:** После сохранения требуется перезагрузка устройства для применения настроек.
+
+---
+
+### 8. MQTT: Тест подключения
+
+Проверяет возможность подключения к MQTT broker.
+
+**Endpoint:** `POST /api/mqtt/test`
+
+**Request:** Без параметров
+
+**Response:**
+```json
+{
+  "success": true,
+  "connected": true
+}
+```
+
+или при ошибке:
+```json
+{
+  "success": false,
+  "connected": false,
+  "error": "Connection timeout"
+}
+```
+
+**Пример:**
+```bash
+curl -X POST http://192.168.4.1/api/mqtt/test
+```
+
+---
+
+### 9. Фракции: Получить пороги
+
+Возвращает пороги для определения фракций.
+
+**Endpoint:** `GET /api/fractions/thresholds`
+
+**Response:**
+```json
+{
+  "heads_threshold": 75.0,
+  "body_threshold": 40.0,
+  "mode": "mash"
+}
+```
+
+**Пример:**
+```bash
+curl http://192.168.4.1/api/fractions/thresholds
+```
+
+---
+
+### 10. Фракции: Установить пороги
+
+Устанавливает пороги для определения фракций.
+
+**Endpoint:** `POST /api/fractions/thresholds`
+
+**Request Body:**
+```json
+{
+  "heads_threshold": 75.0,
+  "body_threshold": 40.0
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success"
+}
+```
+
+**Пример:**
+```bash
+curl -X POST http://192.168.4.1/api/fractions/thresholds \
+  -H "Content-Type: application/json" \
+  -d '{"heads_threshold":75.0,"body_threshold":40.0}'
+```
+
+---
+
+### 11. Сессия: Начать дистилляцию
+
+Начинает новую сессию дистилляции.
+
+**Endpoint:** `POST /api/session/start`
+
+**Request Body:**
+```json
+{
+  "name": "Дистилляция #1",
+  "mash_volume": 20.0
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success"
+}
+```
+
+**Пример:**
+```bash
+curl -X POST http://192.168.4.1/api/session/start \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Дистилляция #1","mash_volume":20.0}'
+```
+
+---
+
+### 12. Сессия: Остановить дистилляцию
+
+Останавливает текущую сессию дистилляции.
+
+**Endpoint:** `POST /api/session/stop`
+
+**Request:** Без параметров
+
+**Response:**
+```json
+{
+  "status": "success"
+}
+```
+
+**Пример:**
+```bash
+curl -X POST http://192.168.4.1/api/session/stop
+```
+
+---
+
+### 13. Сессия: Получить активную сессию
+
+Возвращает информацию об активной сессии.
+
+**Endpoint:** `GET /api/session/active`
+
+**Response:**
+```json
+{
+  "active": true,
+  "name": "Дистилляция #1",
+  "start_time": 1234567890,
+  "mash_volume": 20.0,
+  "collected_volume": 5.2,
+  "current_fraction": "body"
+}
+```
+
+**Пример:**
+```bash
+curl http://192.168.4.1/api/session/active
+```
+
+---
+
+### 14. Приемники: Получить статус
+
+Возвращает статус всех приемников и детектора уровня.
+
+**Endpoint:** `GET /api/receivers/status`
+
+**Response:**
+```json
+{
+  "receivers": [
+    {
+      "id": 0,
+      "name": "Приемник 1",
+      "active": true,
+      "overflowing": false,
+      "current_volume": 500.0,
+      "max_volume": 1000.0,
+      "fraction": "body"
+    }
+  ],
+  "auto_switch": true,
+  "overflow_action": "switch"
+}
+```
+
+**Пример:**
+```bash
+curl http://192.168.4.1/api/receivers/status
+```
+
+---
+
+### 15. Приемники: Переключить приемник
+
+Переключает активный приемник.
+
+**Endpoint:** `POST /api/receivers/switch`
+
+**Request Body:**
+```json
+{
+  "receiver_id": 1
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "active_receiver": 1
+}
+```
+
+**Пример:**
+```bash
+curl -X POST http://192.168.4.1/api/receivers/switch \
+  -H "Content-Type: application/json" \
+  -d '{"receiver_id":1}'
+```
+
+---
+
+### 16. Приемники: Получить конфигурацию
+
+Возвращает конфигурацию всех приемников.
+
+**Endpoint:** `GET /api/receivers/config`
+
+**Response:**
+```json
+{
+  "receivers": [
+    {
+      "id": 0,
+      "name": "Приемник 1",
+      "gpio_pin": 5,
+      "max_volume": 1000.0,
+      "fraction": "body"
+    }
+  ]
+}
+```
+
+---
+
+### 17. Приемники: Сохранить конфигурацию
+
+Сохраняет конфигурацию приемников.
+
+**Endpoint:** `POST /api/receivers/config`
+
+**Request Body:**
+```json
+{
+  "receivers": [
+    {
+      "id": 0,
+      "name": "Приемник 1",
+      "gpio_pin": 5,
+      "max_volume": 1000.0
+    }
+  ]
+}
+```
+
+---
+
+### 18. Детектор уровня: Получить статус
+
+Возвращает статус детектора уровня жидкости.
+
+**Endpoint:** `GET /api/receivers/level/status`
+
+**Response:**
+```json
+{
+  "enabled": true,
+  "overflow": false,
+  "voltage": 1.234,
+  "threshold": 0.5
+}
+```
+
+---
+
+### 19. Детектор уровня: Получить напряжение
+
+Возвращает текущее напряжение детектора уровня.
+
+**Endpoint:** `GET /api/receivers/level/voltage`
+
+**Response:**
+```json
+{
+  "voltage": 1.234
+}
+```
+
+---
+
+### 20. Детектор уровня: Установить порог
+
+Устанавливает порог переполнения.
+
+**Endpoint:** `POST /api/receivers/level/threshold`
+
+**Request Body:**
+```json
+{
+  "threshold": 0.5
+}
+```
+
+---
+
+### 21. Датчики: Получить статус
+
+Возвращает статус всех датчиков в мультисенсорном режиме.
+
+**Endpoint:** `GET /api/sensors/status`
+
+**Response:**
+```json
+{
+  "sensor_count": 2,
+  "max_sensors": 4,
+  "sensors": [
+    {
+      "id": 0,
+      "name": "Основной датчик",
+      "alcohol": 45.2,
+      "temperature": 22.5,
+      "stability": 95,
+      "raw_value": 1234,
+      "active": true,
+      "calibrated": true
+    }
+  ]
+}
+```
+
+---
+
+### 22. Датчики: Включить/выключить
+
+Включает или выключает конкретный датчик.
+
+**Endpoint:** `POST /api/sensors/enable`
+
+**Request Body:**
+```json
+{
+  "sensor_id": 0,
+  "enabled": true
+}
+```
+
+---
+
+### 23. WebSocket: Real-time обновления
+
+WebSocket endpoint для получения real-time обновлений данных.
+
+**Endpoint:** `WS /ws`
+
+**Подключение:**
+```javascript
+const ws = new WebSocket('ws://192.168.4.1/ws');
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Alcohol:', data.alcohol);
+  console.log('Temperature:', data.temperature);
+};
+```
+
+**Формат сообщений:**
+```json
+{
+  "alcohol": 45.2,
+  "temperature": 22.5,
+  "stability": 95,
+  "fraction": "body",
+  "timestamp": 1234567890
+}
+```
+
+---
+
 ## Планируемые endpoints (TODO)
 
 ### Получить историю измерений
 
-**Endpoint:** `GET /api/logs`
+**Endpoint:** `GET /api/logs` (реализовано)
+
+**Response:**
+```json
+{
+  "count": 50,
+  "measurements": [
+    {
+      "timestamp": 12345678,
+      "alcohol": 45.2,
+      "temperature": 22.5,
+      "compensated": true,
+      "fraction": "body"
+    },
+    ...
+  ]
+}
+```
+
+**Пример:**
+```bash
+curl http://192.168.4.1/api/logs
+```
+
+---
+
+### 20. Приемники: Получить статус
+
+Возвращает статус всех приемников.
+
+**Endpoint:** `GET /api/receivers/status`
+
+**Response:**
+```json
+{
+  "enabled": true,
+  "auto_switch": true,
+  "active_receiver": 0,
+  "overflow_action": "switch_next",
+  "receivers": [
+    {
+      "id": 0,
+      "name": "Головы",
+      "active": true,
+      "overflowing": false,
+      "current_volume": 150.5,
+      "max_volume": 1000,
+      "fraction": "HEADS",
+      "gpio_pin": 7
+    }
+  ]
+}
+```
+
+---
+
+### 21. Приемники: Переключить
+
+Переключает на указанный приемник.
+
+**Endpoint:** `POST /api/receivers/switch`
+
+**Request Body:**
+```json
+{
+  "receiver_id": 0
+}
+```
+
+---
+
+### 22. Датчики: Получить статус
+
+Возвращает статус всех датчиков (мультисенсорный режим).
+
+**Endpoint:** `GET /api/sensors/status`
+
+**Response:**
+```json
+{
+  "sensor_count": 2,
+  "max_sensors": 4,
+  "average_alcohol": 45.2,
+  "average_temperature": 22.5,
+  "anomalies_detected": false,
+  "sensors": [
+    {
+      "id": 0,
+      "name": "Основной датчик",
+      "alcohol": 45.0,
+      "temperature": 22.0,
+      "stability": 95,
+      "raw_value": 12345,
+      "active": true,
+      "calibrated": true,
+      "last_update": 1234567890
+    }
+  ]
+}
+```
+
+---
+
+### 23. Датчики: Включить/выключить
+
+Включает или выключает датчик.
+
+**Endpoint:** `POST /api/sensors/enable`
+
+**Request Body:**
+```json
+{
+  "sensor_id": 0,
+  "enabled": true
+}
+```
+
+---
+
+### Очистить логи
+
+**Endpoint:** `DELETE /api/logs` (реализовано)
 
 **Query Parameters:**
 - `limit` (int): Максимальное количество записей (по умолчанию: 100)
@@ -155,7 +767,7 @@ curl -X POST http://192.168.4.1/api/calibrate/alcohol
 
 ### Очистить логи
 
-**Endpoint:** `DELETE /api/logs`
+**Endpoint:** `DELETE /api/logs` (реализовано)
 
 **Response:**
 ```json
@@ -165,11 +777,16 @@ curl -X POST http://192.168.4.1/api/calibrate/alcohol
 }
 ```
 
+**Пример:**
+```bash
+curl -X DELETE http://192.168.4.1/api/logs
+```
+
 ---
 
 ### Настройки Wi-Fi
 
-**Endpoint:** `POST /api/wifi/config`
+**Endpoint:** `POST /api/wifi/config` (реализовано)
 
 **Request Body:**
 ```json
@@ -191,7 +808,7 @@ curl -X POST http://192.168.4.1/api/calibrate/alcohol
 
 ### Получить калибровочные данные
 
-**Endpoint:** `GET /api/calibration`
+**Endpoint:** `GET /api/calibration` (реализовано)
 
 **Response:**
 ```json
@@ -203,11 +820,16 @@ curl -X POST http://192.168.4.1/api/calibrate/alcohol
 }
 ```
 
+**Пример:**
+```bash
+curl http://192.168.4.1/api/calibration
+```
+
 ---
 
 ### Установить калибровочные данные
 
-**Endpoint:** `POST /api/calibration`
+**Endpoint:** `POST /api/calibration` (реализовано)
 
 **Request Body:**
 ```json
@@ -223,6 +845,13 @@ curl -X POST http://192.168.4.1/api/calibrate/alcohol
   "status": "success",
   "message": "Calibration data updated"
 }
+```
+
+**Пример:**
+```bash
+curl -X POST http://192.168.4.1/api/calibration \
+  -H "Content-Type: application/json" \
+  -d '{"water_value":150.5,"alcohol_value":85.2}'
 ```
 
 ---

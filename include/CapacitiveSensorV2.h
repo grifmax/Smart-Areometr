@@ -4,14 +4,31 @@
 #include <Arduino.h>
 #include "CalibrationTables.h"
 
+// Включаем config.h для определения USE_ADS1115
+#ifndef CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef USE_ADS1115
+// Forward declaration для избежания циклических зависимостей
+class ADS1115Driver;
+#endif
+
 /**
  * @brief Улучшенный класс для работы с емкостным датчиком
  *
  * Версия 2.0 с многоточечной калибровкой и точной температурной коррекцией
+ * Поддерживает как встроенный ADC ESP32-C3, так и внешний 16-битный ADS1115
  */
 class CapacitiveSensorV2 {
 private:
-    uint8_t pin;
+#ifdef USE_ADS1115
+    ADS1115Driver* ads1115Driver;  // Указатель на драйвер ADS1115
+    bool useADS1115;               // Флаг использования ADS1115
+    uint8_t pin;                   // Пин для fallback (если ADS1115 недоступен)
+#else
+    uint8_t pin;                   // Пин для встроенного ADC
+#endif
     CalibrationCurve calibrationCurve;
 
     uint16_t samples;      // Количество выборок для усреднения
@@ -25,11 +42,19 @@ private:
 public:
     /**
      * @brief Конструктор
-     * @param sensorPin Пин датчика (должен поддерживать touch)
+     * @param sensorPin Пин датчика (используется только если USE_ADS1115=false)
      * @param numSamples Количество выборок для усреднения
      * @param sampleDelay Задержка между выборками (мс)
      */
-    CapacitiveSensorV2(uint8_t sensorPin, uint16_t numSamples = 100, uint16_t sampleDelay = 10);
+    CapacitiveSensorV2(uint8_t sensorPin = 2, uint16_t numSamples = 100, uint16_t sampleDelay = 10);
+    
+#ifdef USE_ADS1115
+    /**
+     * @brief Установить драйвер ADS1115
+     * @param driver Указатель на инициализированный драйвер ADS1115
+     */
+    void setADS1115Driver(ADS1115Driver* driver);
+#endif
 
     /**
      * @brief Инициализация датчика
@@ -123,6 +148,13 @@ private:
      * @brief Вычислить стандартное отклонение массива
      */
     float calculateStdDev(uint16_t* values, uint16_t count);
+    
+#ifdef USE_ADS1115
+    /**
+     * @brief Вычислить стандартное отклонение для знаковых значений (ADS1115)
+     */
+    float calculateStdDevSigned(int16_t* values, uint16_t count);
+#endif
 };
 
 #endif // CAPACITIVE_SENSOR_V2_H

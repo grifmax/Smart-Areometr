@@ -196,12 +196,48 @@ uint16_t value = analogRead(pin);  // Чтение значения
    - В воде: значение ~1000-2000
    - В спирте: значение ~500-1500 (зависит от чипа)
 
+## Проблемы с веб-сервером на ESP32-C3
+
+### Guru Meditation Error при работе веб-сервера
+
+**Проблема:**
+При использовании библиотеки `ESPAsyncWebServer-esphome` на ESP32-C3 возникают паники:
+```
+Guru Meditation Error: Core 0 panic'ed (Load access fault)
+Exception was unhandled.
+```
+
+**Причина:**
+Библиотека `ESPAsyncWebServer-esphome` имеет проблемы совместимости с ESP32-C3 и может вызывать паники при обработке HTTP запросов.
+
+**Решение:**
+Используйте поддерживаемый форк ESPAsyncWebServer от сообщества:
+
+```ini
+# В platformio.ini
+lib_deps =
+    https://github.com/ESP32Async/ESPAsyncWebServer.git
+    me-no-dev/AsyncTCP@^1.1.1
+```
+
+Добавьте флаги компиляции:
+```ini
+build_flags =
+    -fpermissive
+    -D CONFIG_ASYNC_TCP_STACK_SIZE=16384
+```
+
+**Примечание:** Форк ESP32Async/ESPAsyncWebServer активно поддерживается и совместим с ESP32-C3.
+
+---
+
 ## Связанные коммиты
 
 - `04e3da7`: Add dual-mode operation and audio alerts (основная функциональность)
 - `6994661`: Fix compilation errors for ESP32-C3 (первая попытка)
 - `1a89e2b`: Fix ESP32-C3 detection - use SOC_TOUCH_SENSOR_NUM (вторая попытка)
 - `3841e3e`: Fix ESP32-C3 chip detection using CONFIG_IDF_TARGET macros (финальное решение) ✅
+- `800a195`: Switch to maintained ESPAsyncWebServer fork for ESP32-C3 compatibility (исправление веб-сервера) ✅
 
 ## Поддерживаемые чипы
 

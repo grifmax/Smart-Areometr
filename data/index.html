@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Areometr</title>
+    <script>
+        // Применяем тему ДО загрузки CSS, чтобы избежать мигания
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme !== 'light') {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -14,11 +23,23 @@
                 <span class="icon">🍺</span>
                 <span class="brand-text">Smart Areometr</span>
             </div>
-            <div class="nav-menu">
+            <div class="nav-menu" id="navMenu">
                 <a href="/" class="nav-link active">Главная</a>
                 <a href="/calibration.html" class="nav-link">Калибровка</a>
+                <a href="/fractions.html" class="nav-link">Фракции</a>
+                <a href="/receivers.html" class="nav-link">Приемники</a>
+                <a href="/distillation.html" class="nav-link">Сессии</a>
+                <a href="/mqtt.html" class="nav-link">MQTT</a>
                 <a href="/settings.html" class="nav-link">Настройки</a>
                 <a href="/logs.html" class="nav-link">Логи</a>
+            </div>
+            <div class="nav-controls">
+                <!-- Переключатель тем будет добавлен через JS -->
+                <button class="hamburger-btn" id="hamburgerBtn" aria-label="Меню">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
             </div>
         </nav>
 
@@ -61,6 +82,13 @@
                                 <div class="value-content">
                                     <div class="value-small-label">Обновлено</div>
                                     <div class="value-small-number" id="lastUpdate">--</div>
+                                </div>
+                            </div>
+                            <div class="value-item" id="fractionItem" style="display: none;">
+                                <div class="value-icon" id="fractionIcon">🧪</div>
+                                <div class="value-content">
+                                    <div class="value-small-label">Фракция</div>
+                                    <div class="value-small-number" id="fractionValue" style="font-weight: bold;">--</div>
                                 </div>
                             </div>
                         </div>
@@ -145,6 +173,23 @@
                             <span class="info-label">IP:</span>
                             <span class="info-value" id="ipAddress">--</span>
                         </div>
+                        <div class="info-item">
+                            <span class="info-label">АЦП:</span>
+                            <span class="info-value" id="adcType">--</span>
+                        </div>
+                        <div class="info-item" id="ads1115InfoItem" style="display: none;">
+                            <span class="info-label">ADS1115:</span>
+                            <span class="info-value" id="ads1115Status">--</span>
+                        </div>
+                        <div class="info-item" id="batteryWidget" style="display: none;">
+                            <span class="info-label">Батарея:</span>
+                            <span class="info-value">
+                                <span class="battery-icon" style="margin-right: 5px;">🔋</span>
+                                <span id="batteryPercent">--</span>
+                                (<span id="batteryVoltage">--</span>)
+                                <span id="batteryStatus" style="margin-left: 5px; font-size: 0.9em;">--</span>
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -158,6 +203,8 @@
 
     <!-- Подключение скриптов -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="/js/i18n.js"></script>
+    <script src="/js/theme.js"></script>
     <script src="/js/app.js"></script>
 </body>
 </html>

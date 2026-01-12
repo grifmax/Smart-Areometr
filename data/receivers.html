@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление приемниками - Smart Areometr</title>
+    <script>
+        // Применяем тему ДО загрузки CSS, чтобы избежать мигания
+        (function () {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme !== 'light') {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Навигация -->
+        <nav class="navbar">
+            <div class="nav-brand">
+                <span class="icon">🍺</span>
+                <span class="brand-text">Smart Areometr</span>
+            </div>
+            <div class="nav-menu" id="navMenu">
+                <a href="/" class="nav-link">Главная</a>
+                <a href="/calibration.html" class="nav-link">Калибровка</a>
+                <a href="/fractions.html" class="nav-link">Фракции</a>
+                <a href="/receivers.html" class="nav-link active">Приемники</a>
+                <a href="/distillation.html" class="nav-link">Сессии</a>
+                <a href="/mqtt.html" class="nav-link">MQTT</a>
+                <a href="/settings.html" class="nav-link">Настройки</a>
+                <a href="/logs.html" class="nav-link">Логи</a>
+            </div>
+            <div class="nav-controls">
+                <button class="hamburger-btn" id="hamburgerBtn" aria-label="Меню">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <!-- Статус приемников -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>📦 Статус приемников</h2>
+                </div>
+                <div class="card-body">
+                    <div id="receiversStatus" class="receivers-grid">
+                        <!-- Будет заполнено через JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Детектор уровня -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>🌊 Детектор уровня жидкости</h2>
+                </div>
+                <div class="card-body">
+                    <div class="level-detector-status">
+                        <div class="status-row">
+                            <div class="status-label">Статус:</div>
+                            <div class="status-value" id="levelStatus">
+                                <span class="badge" id="levelBadge">--</span>
+                            </div>
+                        </div>
+                        <div class="status-row">
+                            <div class="status-label">Напряжение:</div>
+                            <div class="status-value" id="levelVoltage">-- V</div>
+                        </div>
+                        <div class="status-row">
+                            <div class="status-label">Порог переполнения:</div>
+                            <div class="status-value" id="levelThreshold">-- V</div>
+                        </div>
+                        <div class="status-row">
+                            <div class="status-label">Переполнение:</div>
+                            <div class="status-value">
+                                <span class="badge badge-danger" id="overflowBadge"
+                                    style="display: none;">ОБНАРУЖЕНО</span>
+                                <span class="badge badge-success" id="normalBadge">Норма</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- График уровня -->
+                    <div style="margin-top: calc(var(--spacing) * 2); height: 300px; position: relative;">
+                        <canvas id="levelChart"></canvas>
+                    </div>
+
+                    <!-- Настройки -->
+                    <div class="form-group" style="margin-top: calc(var(--spacing) * 2);">
+                        <label for="thresholdInput">Порог переполнения (В):</label>
+                        <div class="input-group">
+                            <input type="number" id="thresholdInput" class="form-control" step="0.1" min="0" max="5"
+                                placeholder="0.5">
+                            <button class="btn btn-primary" onclick="setThreshold()">Установить</button>
+                        </div>
+                    </div>
+
+                    <!-- Калибровка -->
+                    <div class="form-group" style="margin-top: var(--spacing);">
+                        <label>Калибровка:</label>
+                        <div class="button-group">
+                            <button class="btn btn-secondary" onclick="calibrateEmpty()">Пустой приемник</button>
+                            <button class="btn btn-secondary" onclick="calibrateFull()">Полный приемник</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Действия при переполнении -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>⚙️ Настройки переполнения</h2>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Действие при переполнении:</label>
+                        <select id="overflowAction" class="form-control" onchange="setOverflowAction()">
+                            <option value="switch_next">Переключить на следующий приемник</option>
+                            <option value="stop">Остановить процесс</option>
+                            <option value="notify_only">Только уведомить</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="autoSwitchEnabled" checked onchange="setAutoSwitch()">
+                            <span>Автоматическое переключение при смене фракций</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ручное управление -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>🎮 Ручное управление</h2>
+                </div>
+                <div class="card-body">
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="switchReceiver(0)">Приемник 1</button>
+                        <button class="btn btn-primary" onclick="switchReceiver(1)">Приемник 2</button>
+                        <button class="btn btn-primary" onclick="switchReceiver(2)">Приемник 3</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Конфигурация приемников -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>⚙️ Конфигурация приемников</h2>
+                </div>
+                <div class="card-body">
+                    <div id="receiverConfig">
+                        <!-- Будет заполнено через JavaScript -->
+                    </div>
+                    <div class="form-group" style="margin-top: var(--spacing);">
+                        <button class="btn btn-primary" onclick="loadReceiverConfig()">Загрузить конфигурацию</button>
+                        <button class="btn btn-success" onclick="saveReceiverConfig()">Сохранить конфигурацию</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/theme.js"></script>
+    <script src="/js/receivers.js"></script>
+</body>
+
+</html>

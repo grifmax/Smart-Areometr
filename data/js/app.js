@@ -1,17 +1,23 @@
 // === Конфигурация ===
 const API_BASE = '';  // Пустая строка для относительных путей
-const UPDATE_INTERVAL = 2000;  // Обновление каждые 2 секунды
+const UPDATE_INTERVAL = 2000;  // Fallback интервал для HTTP polling (если WebSocket недоступен)
 const MAX_CHART_POINTS = 50;  // Максимум точек на графике
 
 // === Глобальные переменные ===
 let alcoholChart = null;
 let temperatureChart = null;
 let updateTimer = null;
+let ws = null;  // WebSocket соединение
+let useWebSocket = true;  // Использовать WebSocket вместо HTTP polling
 let chartData = {
     labels: [],
     alcohol: [],
     temperature: []
 };
+
+// Делаем графики доступными глобально для обновления темы
+window.alcoholChart = null;
+window.temperatureChart = null;
 
 // === Инициализация ===
 document.addEventListener('DOMContentLoaded', () => {
@@ -19,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initCharts();
     loadStatus();
     loadMeasurement();
+    loadBatteryStatus();  // Загружаем статус батареи
     startAutoUpdate();
 });
 
@@ -77,6 +84,9 @@ function initCharts() {
             }
         }
     });
+    
+    // Сохраняем глобально для обновления темы
+    window.alcoholChart = alcoholChart;
 
     // График температуры
     temperatureChart = new Chart(temperatureCtx, {
@@ -124,6 +134,9 @@ function initCharts() {
             }
         }
     });
+    
+    // Сохраняем глобально для обновления темы
+    window.temperatureChart = temperatureChart;
 }
 
 // === Загрузка данных измерений ===
@@ -164,10 +177,150 @@ function updateMeasurementDisplay(data) {
         calibrationStatus.style.color = data.calibrated ? '#4CAF50' : '#F44336';
     }
 
+    // Информация об ADC (ADS1115 или встроенный)
+    if (data.adc_type) {
+        const adcInfoElement = document.getElementById('adcInfo');
+        if (adcInfoElement) {
+            if (data.adc_type === 'ads1115') {
+                adcInfoElement.textContent = `ADS1115 (${data.adc_resolution || 16}-bit)`;
+                adcInfoElement.style.color = '#4CAF50';
+                // Показываем напряжение сигнала, если доступно
+                if (data.signal_voltage !== undefined) {
+                    const voltageInfo = document.getElementById('signalVoltage');
+                    if (voltageInfo) {
+                        voltageInfo.textContent = `${data.signal_voltage.toFixed(4)}V`;
+                        voltageInfo.style.display = 'inline';
+                    }
+                }
+            } else {
+                adcInfoElement.textContent = `Встроенный (${data.adc_resolution || 12}-bit)`;
+                adcInfoElement.style.color = '#9E9E9E';
+            }
+        }
+    }
+
+    // Фракция
+    const fractionItem = document.getElementById('fractionItem');
+    const fractionValue = document.getElementById('fractionValue');
+    const fractionIcon = document.getElementById('fractionIcon');
+
+    if (data.fraction) {
+        if (fractionItem) fractionItem.style.display = 'flex';
+        
+        const fractionInfo = {
+            'unknown': { name: 'Ожидание', icon: '🧪', color: '#9E9E9E' },
+            'foreshots': { name: 'Первач', icon: '🔴', color: '#D32F2F' },
+            'heads': { name: 'Головы', icon: '🟠', color: '#F57C00' },
+            'body': { name: 'Тело', icon: '🟢', color: '#4CAF50' },
+            'tails': { name: 'Хвосты', icon: '🟡', color: '#FBC02D' },
+            'finished': { name: 'Завершено', icon: '⚫', color: '#757575' }
+        };
+        
+        const info = fractionInfo[data.fraction] || fractionInfo['unknown'];
+        if (fractionValue) {
+            fractionValue.textContent = info.name;
+            fractionValue.style.color = info.color;
+        }
+        if (fractionIcon) fractionIcon.textContent = info.icon;
+        
+        // Показываем скорость изменения если есть
+        if (data.alcohol_rate !== undefined && data.alcohol_rate !== null) {
+            const rateText = data.alcohol_rate >= 0 ? 
+                `+${data.alcohol_rate.toFixed(2)}` : 
+                data.alcohol_rate.toFixed(2);
+            if (fractionValue) {
+                fractionValue.textContent = `${info.name} (${rateText} %/мин)`;
+            }
+        }
+    } else {
+        if (fractionItem) fractionItem.style.display = 'none';
+    }
+
     // Время обновления
     const lastUpdate = document.getElementById('lastUpdate');
     if (lastUpdate) {
         lastUpdate.textContent = new Date().toLocaleTimeString();
+    }
+    
+    // Информация об АЦП (если есть в данных измерения)
+    if (data.adc_type) {
+        const adcTypeElement = document.getElementById('adcType');
+        if (adcTypeElement) {
+            if (data.adc_type === 'ads1115') {
+                adcTypeElement.textContent = `ADS1115 (${data.adc_resolution || 16}-bit)`;
+                adcTypeElement.style.color = '#4CAF50';
+            } else {
+                adcTypeElement.textContent = `Встроенный (${data.adc_resolution || 12}-bit)`;
+                adcTypeElement.style.color = '#9E9E9E';
+            }
+        }
+    }
+}
+
+// === Загрузка статуса батареи ===
+async function loadBatteryStatus() {
+    try {
+        const response = await fetch(`${API_BASE}/api/battery/status`);
+        if (!response.ok) return;  // Батарея не доступна
+        
+        const data = await response.json();
+        updateBatteryDisplay(data);
+    } catch (error) {
+        // Игнорируем ошибки - батарея может быть недоступна
+    }
+}
+
+// === Обновление отображения батареи ===
+function updateBatteryDisplay(data) {
+    const batteryWidget = document.getElementById('batteryWidget');
+    const batteryPercent = document.getElementById('batteryPercent');
+    const batteryVoltage = document.getElementById('batteryVoltage');
+    const batteryStatus = document.getElementById('batteryStatus');
+    
+    if (batteryWidget) {
+        batteryWidget.style.display = 'flex';
+        
+        if (batteryPercent) {
+            batteryPercent.textContent = `${data.percent || 0}%`;
+            // Обновляем иконку батареи в зависимости от уровня заряда
+            const batteryIcon = batteryWidget.querySelector('.battery-icon');
+            if (batteryIcon) {
+                const percent = data.percent || 0;
+                if (percent <= 10) {
+                    batteryIcon.textContent = '🔴'; // Критический
+                    batteryIcon.style.color = '#F44336';
+                } else if (percent <= 20) {
+                    batteryIcon.textContent = '🟠'; // Низкий
+                    batteryIcon.style.color = '#FF9800';
+                } else if (percent <= 50) {
+                    batteryIcon.textContent = '🟡'; // Средний
+                    batteryIcon.style.color = '#FFC107';
+                } else {
+                    batteryIcon.textContent = '🟢'; // Нормальный
+                    batteryIcon.style.color = '#4CAF50';
+                }
+            }
+        }
+        
+        if (batteryVoltage) {
+            batteryVoltage.textContent = `${(data.voltage || 0).toFixed(2)}V`;
+        }
+        
+        if (batteryStatus) {
+            if (data.charging) {
+                batteryStatus.textContent = 'Зарядка';
+                batteryStatus.style.color = '#2196F3';
+            } else if (data.low_battery) {
+                batteryStatus.textContent = 'Низкий заряд';
+                batteryStatus.style.color = '#FF9800';
+            } else if (data.critical) {
+                batteryStatus.textContent = 'Критический';
+                batteryStatus.style.color = '#F44336';
+            } else {
+                batteryStatus.textContent = 'Норма';
+                batteryStatus.style.color = '#4CAF50';
+            }
+        }
     }
 }
 
@@ -222,6 +375,38 @@ function updateSystemInfo(data) {
         const element = document.getElementById(id);
         if (element) element.textContent = value;
     }
+    
+    // Обновление информации об АЦП
+    const adcTypeElement = document.getElementById('adcType');
+    const ads1115InfoItem = document.getElementById('ads1115InfoItem');
+    const ads1115StatusElement = document.getElementById('ads1115Status');
+    
+    if (data.ads1115) {
+        const ads1115 = data.ads1115;
+        if (ads1115.enabled && ads1115.initialized && ads1115.connected) {
+            if (adcTypeElement) {
+                adcTypeElement.textContent = `ADS1115 (${ads1115.resolution}-bit)`;
+                adcTypeElement.style.color = '#4CAF50';
+            }
+            if (ads1115InfoItem) ads1115InfoItem.style.display = 'flex';
+            if (ads1115StatusElement) {
+                ads1115StatusElement.textContent = `Подключен (${ads1115.data_rate} SPS)`;
+                ads1115StatusElement.style.color = '#4CAF50';
+            }
+        } else {
+            if (adcTypeElement) {
+                adcTypeElement.textContent = 'Встроенный (12-bit)';
+                adcTypeElement.style.color = '#9E9E9E';
+            }
+            if (ads1115InfoItem) ads1115InfoItem.style.display = 'none';
+        }
+    } else {
+        if (adcTypeElement) {
+            adcTypeElement.textContent = 'Встроенный (12-bit)';
+            adcTypeElement.style.color = '#9E9E9E';
+        }
+        if (ads1115InfoItem) ads1115InfoItem.style.display = 'none';
+    }
 }
 
 // === Обновление статуса подключения ===
@@ -242,12 +427,76 @@ function updateConnectionStatus(connected) {
     }
 }
 
-// === Автоматическое обновление ===
+// === WebSocket подключение ===
+function initWebSocket() {
+    // Определяем протокол (ws или wss)
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    
+    console.log('Подключение к WebSocket:', wsUrl);
+    
+    ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+        console.log('WebSocket подключен');
+        updateConnectionStatus(true);
+        // Останавливаем HTTP polling, если он был запущен
+        stopAutoUpdate();
+    };
+    
+    ws.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            updateMeasurementDisplay(data);
+            updateCharts(data);
+        } catch (error) {
+            console.error('Ошибка парсинга WebSocket данных:', error);
+        }
+    };
+    
+    ws.onerror = (error) => {
+        console.error('WebSocket ошибка:', error);
+        updateConnectionStatus(false);
+        // Fallback на HTTP polling при ошибке
+        if (!updateTimer) {
+            console.log('Переключение на HTTP polling из-за ошибки WebSocket');
+            useWebSocket = false;
+            loadMeasurement();
+            startAutoUpdate();
+        }
+    };
+    
+    ws.onclose = () => {
+        console.log('WebSocket отключен, переключение на HTTP polling');
+        updateConnectionStatus(false);
+        // Переключаемся на HTTP polling
+        useWebSocket = false;
+        if (!updateTimer) {
+            loadMeasurement();
+            startAutoUpdate();
+        }
+        // Пытаемся переподключиться через 5 секунд
+        setTimeout(() => {
+            if (useWebSocket) {
+                initWebSocket();
+            }
+        }, 5000);
+    };
+}
+
+// === Автоматическое обновление (HTTP polling fallback) ===
 function startAutoUpdate() {
     if (updateTimer) clearInterval(updateTimer);
 
     updateTimer = setInterval(() => {
         loadMeasurement();
+        // Обновляем батарею реже - каждые 30 секунд (15 интервалов по 2 секунды)
+        if (!window.batteryUpdateCounter) window.batteryUpdateCounter = 0;
+        window.batteryUpdateCounter++;
+        if (window.batteryUpdateCounter >= 15) {
+            loadBatteryStatus();
+            window.batteryUpdateCounter = 0;
+        }
     }, UPDATE_INTERVAL);
 }
 
